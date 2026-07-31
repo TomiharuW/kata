@@ -180,5 +180,21 @@ export function render(state, store){
   }
   children.push(h('div', {style:'margin:26px 0 0;padding-top:14px;border-top:1px solid var(--color-divider)'}, resetChildren));
 
+  // Start over — wipes this device's stored data entirely. Sits below the
+  // softer "reset to the original setup" so the destructive one is last.
+  const wipeChildren = [];
+  if(s.wipeIdle){
+    wipeChildren.push(h('button', {onClick:s.armWipe, style:'background:none;border:none;padding:0;font-family:var(--font-body);font-size:11.5px;color:color-mix(in srgb, var(--color-text) 45%, transparent);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, 'Start over — erase everything on this device'));
+  }
+  if(s.wipeArmed){
+    wipeChildren.push(h('div', {style:'font-size:12.5px;line-height:1.55;color:var(--color-accent-800);margin-bottom:6px'}, 'This erases everything stored here and starts the app as if freshly installed.'));
+    wipeChildren.push(h('div', {style:'font-size:11.5px;line-height:1.5;font-variant-numeric:tabular-nums;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:10px'}, 'Going now: '+s.wipeSummary+'. Download a backup first if any of it matters — this cannot be undone.'));
+    wipeChildren.push(h('div', {style:'display:flex;gap:9px'}, [
+      h('button', {class:'btn btn-secondary', onClick:s.cancelWipe, style:'flex:1'}, 'Keep it'),
+      h('button', {class:'btn btn-primary', onClick:s.doWipe, style:'flex:1'}, 'Erase everything'),
+    ]));
+  }
+  children.push(h('div', {style:'margin:14px 0 0'}, wipeChildren));
+
   return h('div', {}, children);
 }

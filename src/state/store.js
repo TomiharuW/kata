@@ -47,6 +47,9 @@ const BACKUP_FIELDS = [
   'stepDates', 'userGoals', 'tasks', 'taskDone', 'extraToday', 'jpStudied',
   'study', 'sheetUrl', 'sheetPushUrl', 'syncAt', 'pendingPush', 'licks',
   'instruments', 'goals', 'projects', 'routineSteps',
+  // Migration marker — must persist, or purgeLegacySeed() would re-run on every
+  // load and keep resetting progress on the seeded goals.
+  '_seedPurged',
 ];
 
 class Store {
@@ -54,6 +57,7 @@ class Store {
     this.state = {
       // version field for future migrations — the key name stays kata_state_v2.
       _schemaVersion: 1,
+      _seedPurged: false,
       tab: 'today',
       mode: 'default',
       projects: clone(SEED_PROJECTS),
@@ -83,6 +87,7 @@ class Store {
       goalOpen: {},
       newStep: {},
       resetArmed: false,
+      wipeArmed: false,
       libQuery: '',
       study: SEED_STUDY,
       studyForm: {open:false, title:'', link:'', why:'', creator:'', category:'Video Game', priority:'Medium', inst:'piano', goalId:'', status:'Inbox'},
@@ -124,11 +129,62 @@ class Store {
     this.listeners.forEach(fn => fn(this.state));
   }
 
+  // Installs made before the fresh-slate change carry the old demo dataset in
+  // localStorage — 8 weeks of generated sessions, five demo projects, and goal
+  // steps pre-marked done. New code never re-seeds those, but it also never
+  // removed what was already stored, so they persisted. This strips them once,
+  // leaving anything genuinely logged since then untouched.
+  purgeLegacySeed(s){
+    const LEGACY_PROJECT_IDS = ['p1','p2','p3','p4','p5'];
+    const LEGACY_LICK_IDS = ['lk1','lk2','lk3','lk4'];
+    let touched = false;
+
+    const sessions = (s.sessions||[]).filter(x => !String(x.id||'').startsWith('seed-'));
+    if(sessions.length !== (s.sessions||[]).length) touched = true;
+
+    const projects = (s.projects||[]).filter(p => LEGACY_PROJECT_IDS.indexOf(p.id) < 0);
+    if(projects.length !== (s.projects||[]).length) touched = true;
+
+    // Seeded goals shipped with `d:'done'`/`'progress'` baked into their steps.
+    // Reset those to 'todo'; goals the user created (user:true) are left alone.
+    const goals = (s.goals||[]).map(g => {
+      if(g.user) return g;
+      const steps = (g.steps||[]).map(st => (st.d && st.d !== 'todo') ? (touched = true, Object.assign({}, st, {d:'todo'})) : st);
+      return Object.assign({}, g, {steps});
+    });
+
+    const licks = (s.licks||[]).map(l => {
+      if(LEGACY_LICK_IDS.indexOf(l.id) < 0 || !(l.plays||[]).length) return l;
+      touched = true;
+      return Object.assign({}, l, {plays: []});
+    });
+
+    // Completion stamps for steps that no longer exist anywhere.
+    const liveStepIds = new Set(
+      goals.concat(projects).reduce((a,x)=>a.concat((x.steps||[]).map(st=>st.id)), [])
+    );
+    const prune = obj => {
+      const out = {};
+      Object.keys(obj||{}).forEach(k => { if(liveStepIds.has(k)) out[k] = obj[k]; });
+      if(Object.keys(out).length !== Object.keys(obj||{}).length) touched = true;
+      return out;
+    };
+    const stepStatus = prune(s.stepStatus);
+    const stepDates = prune(s.stepDates);
+
+    return {changed: touched, patch: {sessions, projects, goals, licks, stepStatus, stepDates}};
+  }
+
   init(){
     try{
       const raw = localStorage.getItem(STORAGE_KEY);
       if(raw){
-        const s = JSON.parse(raw);
+        let s = JSON.parse(raw);
+        if(!s._seedPurged){
+          const {patch} = this.purgeLegacySeed(s);
+          s = Object.assign({}, s, patch, {_seedPurged: true});
+          try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }catch(e){}
+        }
         const instruments = (s.instruments && s.instruments.length) ? s.instruments : clone(ACT_DEFS);
         const goals = (s.goals && s.goals.length) ? s.goals : clone(SEED_GOALS).concat(s.userGoals||[]);
         // Projects may legitimately be an empty list (fresh slate), so honour a
@@ -139,6 +195,7 @@ class Store {
         applyProjects(projects);
         this.setState({
           instruments, goals, projects,
+          _seedPurged: true,
           routineSteps: (s.routineSteps && s.routineSteps.length) ? s.routineSteps : seedRoutineSteps(),
           sessions: s.sessions||[], checklist: s.checklist||{}, mode: s.mode||'default',
           activeProjectId: s.activeProjectId || (projects[0] && projects[0].id) || '', stepStatus: s.stepStatus||{},
@@ -155,7 +212,7 @@ class Store {
         // study queue come from the seeds in the initial state above; the
         // practice log and projects begin blank so the app is yours from day one.
         applyProjects(this.state.projects);
-        this.persist({});
+        this.persist({_seedPurged: true});
       }
     }catch(e){ /* corrupt stored state — fall through to the seeded defaults */ }
     const st = PROPS.startTab; if(st && st!=='today') this.setState({tab:st});
@@ -568,6 +625,13 @@ class Store {
     const activities = on ? g.activities.filter(x=>x!==actId) : (g.activities||[]).concat([actId]);
     this.patchGoal(goalId, {activities: activities.length ? activities : ['other']});
   }
+  // Wipes everything this device has stored and reloads into a first-run app.
+  // The only way back is a backup file, so the UI gates it behind a confirm.
+  wipeEverything(){
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+    location.reload();
+  }
+
   /* ---- projects (time-boxed pushes) ----
      Same shape as a goal plus `blurb`, an optional `until` date, and a
      `goalId` binding — logging against a project also credits that goal
@@ -1839,6 +1903,11 @@ class Store {
       exportBackup: ()=>this.exportBackup(),
       importBackup: file=>this.importBackup(file),
       clearBackupMsg: ()=>this.setState({backupMsg:''}),
+      wipeArmed: state.wipeArmed, wipeIdle: !state.wipeArmed,
+      armWipe: ()=>this.setState({wipeArmed:true}),
+      cancelWipe: ()=>this.setState({wipeArmed:false}),
+      doWipe: ()=>this.wipeEverything(),
+      wipeSummary: state.sessions.length+' sessions · '+state.projects.length+' projects · '+state.goals.length+' goals',
     };
   }
 }
