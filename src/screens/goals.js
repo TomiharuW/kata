@@ -120,7 +120,12 @@ export function render(state, store){
   }
 
   children.push(h('div', {style:'font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:10px'}, 'Projects · time-boxed pushes'));
-  children.push(...g.projectCards.map(projectCard));
+  if(g.projectCards.length){
+    children.push(...g.projectCards.map(projectCard));
+  } else {
+    children.push(h('div', {style:'font-size:12.5px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 48%, transparent);padding-bottom:4px'},
+      'No projects running. A project is a short push at one goal — start one from Today, under Project.'));
+  }
 
   children.push(h('div', {style:'font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:24px 0 10px'}, 'Long-term goals'));
   children.push(...g.goalRows.map(goalRow));

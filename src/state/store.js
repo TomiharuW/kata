@@ -1617,9 +1617,13 @@ class Store {
       const sk = toKey(start), ek = toKey(end);
       weekBuckets.push(mine.filter(s=>s.date>=sk && s.date<ek).reduce((a,s)=>a+(Number(s.minutes)||0),0));
     }
-    const peak = Math.max.apply(null, weekBuckets.concat([1]));
+    // The real peak is what gets displayed; `divisor` is only a guard so an
+    // all-zero history doesn't divide by zero (it used to leak into the label
+    // as a phantom "peak 1 min" on a completely empty log).
+    const peak = Math.max.apply(null, weekBuckets.concat([0]));
+    const divisor = peak || 1;
     const spark = weekBuckets.map((v,i)=>{
-      const h = Math.max(1, Math.round(v/peak*48));
+      const h = peak ? Math.max(1, Math.round(v/divisor*48)) : 0;
       return {x: i*32+2, y: 52-h, h, fill: v ? 'color-mix(in srgb, '+la.stroke+' 16%, transparent)' : 'transparent', stroke: v ? la.stroke : 'var(--color-divider)'};
     });
     const inst = {

@@ -1,6 +1,8 @@
 // Cache-first service worker. No build step: this list is maintained by hand —
 // whenever a new file is added under src/, public/, or reference/*.css, add its path here.
-const CACHE_VERSION = 'kata-v1';
+// Bump on every deploy: the old cache is deleted on activate, so a changed
+// version is what actually pushes updated files onto installed devices.
+const CACHE_VERSION = 'kata-v2';
 const CORE_ASSETS = [
   './',
   './index.html',
