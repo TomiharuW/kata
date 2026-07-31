@@ -66,7 +66,9 @@ function tabBar(nav){
       h('circle', {cx:9, cy:16, r:2}),
     ])},
   ];
-  return h('div', {class:'kata-tabbar', style:'position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--color-bg);border-top:1px solid var(--color-divider);display:flex;padding:8px 2px 12px'},
+  // z-index 30 keeps the bar above page content but below the goal-check
+  // bottom sheet (backdrop 40 / sheet 41).
+  return h('div', {class:'kata-tabbar', style:'position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--color-bg);border-top:1px solid var(--color-divider);display:flex;padding:8px 2px 12px;z-index:30'},
     items.map(it => h('button', {onClick:nav.nav[it.id].select, style:`flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 1px;color:${nav.nav[it.id].color};cursor:pointer`}, [
       it.icon,
       h('span', {style:'font-size:9.5px;font-family:var(--font-body)'}, it.label),

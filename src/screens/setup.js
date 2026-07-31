@@ -138,6 +138,34 @@ export function render(state, store){
     children.push(h('button', {onClick:s.newGoalFromSetup, style:'background:none;border:none;padding:8px 0 0;font-family:var(--font-body);font-size:11.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, '＋ new goal'));
   }
 
+  // Backup & restore — a full snapshot of everything persisted (sessions,
+  // goals, tasks, instruments, licks, study queue, routine — not just the
+  // practice log the Log screen's Export .json covers), since data lives only
+  // on this device.
+  const fileInput = h('input', {
+    type: 'file', accept: 'application/json,.json', style: 'display:none',
+    onChange: async e => {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if(file) await s.importBackup(file);
+    },
+  });
+  children.push(h('div', {style:'margin:26px 0 0;padding-top:14px;border-top:1px solid var(--color-divider)'}, [
+    h('div', {style:'font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:8px'}, 'Backup & restore'),
+    h('div', {style:'font-size:12px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 50%, transparent);margin-bottom:11px'}, 'Everything lives only on this device. Download a full backup now and then, and keep the file somewhere off the phone — a restore replaces sessions, goals, tasks, instruments and the study queue with what’s in the file.'),
+    h('div', {style:'display:flex;gap:9px'}, [
+      h('button', {class:'btn btn-secondary', style:'flex:1', onClick:s.exportBackup}, 'Download full backup'),
+      h('button', {class:'btn btn-secondary', style:'flex:1', onClick:()=>fileInput.click()}, 'Restore from backup…'),
+    ]),
+    fileInput,
+    s.backupMsg ? h('div', {style:'display:flex;align-items:flex-start;gap:8px;margin-top:10px;padding:10px 12px;background:var(--color-accent-100);border-left:2px solid var(--color-accent);font-size:12px;line-height:1.5;color:var(--color-accent-800)'}, [
+      h('span', {style:'flex:1;min-width:0'}, s.backupMsg),
+      h('button', {onClick:s.clearBackupMsg, class:'btn btn-icon btn-ghost', 'aria-label':'Dismiss', style:'flex:none;width:24px;height:24px'}, [
+        h('svg', {width:13, height:13, viewBox:'0 0 24 24', fill:'none', stroke:'currentColor', 'stroke-width':2, 'stroke-linecap':'round'}, [h('path', {d:'M6 6l12 12M18 6 6 18'})]),
+      ]),
+    ]) : null,
+  ]));
+
   // Reset
   const resetChildren = [];
   if(s.resetIdle){

@@ -16,9 +16,9 @@ import {
   STUDY_STATUS, STUDY_PRIORITY, STUDY_CATEGORY, STUDY_COLS, SEED_STUDY,
   SHAKU_PHASES, SHAKU_ROUTINE, seedRoutineSteps, LICK_SOURCES, seedLicks,
   DEFAULT_TASKS, GOALS, SEED_GOALS, applyGoals,
-  PROJECTS, SEED_DONE_DATES,
+  PROJECTS, SEED_PROJECTS, applyProjects, SEED_DONE_DATES,
   DAYS, DEFAULT_ROTATION, DEFAULT_BLOCKS, DEFAULT_STRENGTH_DAYS,
-  WORKED, STUCK, toKey, labelFor, mondayOf, seedSessions,
+  toKey, labelFor, mondayOf,
   STEP_STYLE, NEXT_STATUS,
 } from '../data/index.js';
 
@@ -40,6 +40,15 @@ const PROPS = {
 const MUTED = 'color-mix(in srgb, var(--color-text) 60%, transparent)';
 const STORAGE_KEY = 'kata_state_v2';
 
+// Every field persisted to localStorage — kept as one list so persist(), the
+// full-backup export, and import all agree on what "everything" means.
+const BACKUP_FIELDS = [
+  'sessions', 'checklist', 'mode', 'activeProjectId', 'stepStatus', 'routine',
+  'stepDates', 'userGoals', 'tasks', 'taskDone', 'extraToday', 'jpStudied',
+  'study', 'sheetUrl', 'sheetPushUrl', 'syncAt', 'pendingPush', 'licks',
+  'instruments', 'goals', 'projects', 'routineSteps',
+];
+
 class Store {
   constructor(){
     this.state = {
@@ -47,7 +56,9 @@ class Store {
       _schemaVersion: 1,
       tab: 'today',
       mode: 'default',
-      activeProjectId: PROJECTS[0].id,
+      projects: clone(SEED_PROJECTS),
+      activeProjectId: (SEED_PROJECTS[0] && SEED_PROJECTS[0].id) || '',
+      projectForm: {open:false, name:'', blurb:'', goalId:'', activities:[], steps:'', until:''},
       sessions: [],
       checklist: {},
       stepStatus: {},
@@ -101,6 +112,7 @@ class Store {
       lickForm: {open:false, name:'', source:'Honkyoku', notation:'', note:''},
       openCue: {},
       form: {date: toKey(new Date()), activity: 'piano', minutes: '', whatWorked: '', whereStuck: '', link: '', steps: [], licks: []},
+      backupMsg: '',
     };
     this.listeners = new Set();
   }
@@ -119,13 +131,17 @@ class Store {
         const s = JSON.parse(raw);
         const instruments = (s.instruments && s.instruments.length) ? s.instruments : clone(ACT_DEFS);
         const goals = (s.goals && s.goals.length) ? s.goals : clone(SEED_GOALS).concat(s.userGoals||[]);
+        // Projects may legitimately be an empty list (fresh slate), so honour a
+        // stored [] rather than falling back to the seed the way goals do.
+        const projects = Array.isArray(s.projects) ? s.projects : clone(SEED_PROJECTS);
         applyInstruments(instruments);
         applyGoals(goals);
+        applyProjects(projects);
         this.setState({
-          instruments, goals,
+          instruments, goals, projects,
           routineSteps: (s.routineSteps && s.routineSteps.length) ? s.routineSteps : seedRoutineSteps(),
           sessions: s.sessions||[], checklist: s.checklist||{}, mode: s.mode||'default',
-          activeProjectId: s.activeProjectId||PROJECTS[0].id, stepStatus: s.stepStatus||{},
+          activeProjectId: s.activeProjectId || (projects[0] && projects[0].id) || '', stepStatus: s.stepStatus||{},
           stepDates: s.stepDates||{}, userGoals: s.userGoals||[],
           tasks: s.tasks||DEFAULT_TASKS, taskDone: s.taskDone||{},
           extraToday: s.extraToday||{}, jpStudied: s.jpStudied||{},
@@ -135,29 +151,82 @@ class Store {
           routine: Object.assign({}, this.state.routine, s.routine||{}),
         });
       } else {
-        const sessions = seedSessions();
-        this.setState({sessions});
-        this.persist({sessions});
+        // First run: start empty. Goals, repeating tasks, routine steps and the
+        // study queue come from the seeds in the initial state above; the
+        // practice log and projects begin blank so the app is yours from day one.
+        applyProjects(this.state.projects);
+        this.persist({});
       }
-    }catch(e){ this.setState({sessions: seedSessions()}); }
+    }catch(e){ /* corrupt stored state — fall through to the seeded defaults */ }
     const st = PROPS.startTab; if(st && st!=='today') this.setState({tab:st});
     this._tick = setInterval(()=>this.setState({tick: Date.now()}), 60000);
   }
   dispose(){ if(this._tick) clearInterval(this._tick); }
 
+  snapshot(){
+    const s = {};
+    BACKUP_FIELDS.forEach(k => { s[k] = this.state[k]; });
+    return s;
+  }
+
   persist(patch){
-    const s = Object.assign({
-      sessions:this.state.sessions, checklist:this.state.checklist, mode:this.state.mode,
-      activeProjectId:this.state.activeProjectId, stepStatus:this.state.stepStatus, routine:this.state.routine,
-      stepDates:this.state.stepDates, userGoals:this.state.userGoals,
-      tasks:this.state.tasks, taskDone:this.state.taskDone,
-      extraToday:this.state.extraToday, jpStudied:this.state.jpStudied,
-      study:this.state.study, sheetUrl:this.state.sheetUrl, sheetPushUrl:this.state.sheetPushUrl,
-      syncAt:this.state.syncAt, pendingPush:this.state.pendingPush,
-      licks:this.state.licks,
-      instruments:this.state.instruments, goals:this.state.goals, routineSteps:this.state.routineSteps,
-    }, patch||{});
+    const s = Object.assign(this.snapshot(), patch||{});
     try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }catch(e){}
+  }
+
+  /* ---- full backup / restore (beyond the practice-log-only Export .json
+     on the Log screen) — covers every persisted field so a phone loss
+     doesn't also mean losing goals, tasks, instruments, licks, etc. ---- */
+  exportBackup(){
+    const payload = Object.assign(
+      {_schemaVersion: this.state._schemaVersion||1, _exportedAt: new Date().toISOString()},
+      this.snapshot()
+    );
+    this.download('kata-backup-'+toKey(new Date())+'.json', JSON.stringify(payload, null, 2), 'application/json');
+  }
+  async importBackup(file){
+    try{
+      const text = await file.text();
+      const s = JSON.parse(text);
+      if(!s || typeof s !== 'object') throw new Error('that file isn’t a valid backup');
+      const instruments = (s.instruments && s.instruments.length) ? s.instruments : this.state.instruments;
+      const goals = (s.goals && s.goals.length) ? s.goals : this.state.goals;
+      const projects = Array.isArray(s.projects) ? s.projects : this.state.projects;
+      applyInstruments(instruments);
+      applyGoals(goals);
+      applyProjects(projects);
+      const patch = {
+        instruments, goals, projects,
+        activeProjectId: s.activeProjectId || (projects[0] && projects[0].id) || '',
+        routineSteps: (s.routineSteps && s.routineSteps.length) ? s.routineSteps : this.state.routineSteps,
+        sessions: s.sessions || this.state.sessions,
+        checklist: s.checklist || this.state.checklist,
+        mode: s.mode || this.state.mode,
+        activeProjectId: s.activeProjectId || this.state.activeProjectId,
+        stepStatus: s.stepStatus || this.state.stepStatus,
+        stepDates: s.stepDates || this.state.stepDates,
+        userGoals: s.userGoals || this.state.userGoals,
+        tasks: (s.tasks && s.tasks.length) ? s.tasks : this.state.tasks,
+        taskDone: s.taskDone || this.state.taskDone,
+        extraToday: s.extraToday || this.state.extraToday,
+        jpStudied: s.jpStudied || this.state.jpStudied,
+        study: (s.study && s.study.length) ? s.study : this.state.study,
+        sheetUrl: s.sheetUrl != null ? s.sheetUrl : this.state.sheetUrl,
+        sheetPushUrl: s.sheetPushUrl != null ? s.sheetPushUrl : this.state.sheetPushUrl,
+        syncAt: s.syncAt || this.state.syncAt,
+        pendingPush: s.pendingPush || this.state.pendingPush,
+        licks: (s.licks && s.licks.length) ? s.licks : this.state.licks,
+        routine: s.routine ? Object.assign({}, this.state.routine, s.routine) : this.state.routine,
+      };
+      const when = s._exportedAt ? labelFor(s._exportedAt.slice(0,10)) : 'an earlier backup';
+      patch.backupMsg = 'Restored '+when+' — '+patch.sessions.length+' sessions, '+patch.goals.length+' goals, '+patch.projects.length+' projects, '+patch.tasks.length+' tasks.';
+      this.setState(patch);
+      this.persist(patch);
+      return {ok:true};
+    }catch(e){
+      this.setState({backupMsg: 'Could not read that file — '+e.message});
+      return {ok:false, error:e.message};
+    }
   }
 
   /* ---- word of the day ---- */
@@ -499,6 +568,59 @@ class Store {
     const activities = on ? g.activities.filter(x=>x!==actId) : (g.activities||[]).concat([actId]);
     this.patchGoal(goalId, {activities: activities.length ? activities : ['other']});
   }
+  /* ---- projects (time-boxed pushes) ----
+     Same shape as a goal plus `blurb`, an optional `until` date, and a
+     `goalId` binding — logging against a project also credits that goal
+     (see submitSession). */
+  commitProjects(projects, extra){
+    applyProjects(projects);
+    this.setState(Object.assign({projects}, extra||{}));
+    this.persist(Object.assign({projects}, extra||{}));
+  }
+  setProjectForm(patch){ this.setState({projectForm: Object.assign({}, this.state.projectForm, patch)}); }
+  addProject(){
+    const f = this.state.projectForm;
+    const name = (f.name||'').trim();
+    if(!name) return;
+    const id = 'up-'+Date.now();
+    const steps = (f.steps||'').split('\n').map(t=>t.trim()).filter(Boolean)
+      .map((label,i)=>({id:id+'s'+i, label, d:'todo'}));
+    const goal = GOALS.find(g=>g.id===f.goalId);
+    const project = {
+      id, name, blurb:(f.blurb||'').trim(), goalId:f.goalId||'',
+      area: goal ? goal.area : 'Music',
+      activities: f.activities.length ? f.activities.slice() : ['other'],
+      until: f.until||'', steps, user:true,
+    };
+    this.commitProjects(this.state.projects.concat([project]), {
+      activeProjectId: id,
+      projectForm: {open:false, name:'', blurb:'', goalId:'', activities:[], steps:'', until:''},
+    });
+  }
+  patchProject(id, patch){
+    this.commitProjects(this.state.projects.map(p=>p.id===id ? Object.assign({}, p, patch) : p));
+  }
+  removeProject(id){
+    const projects = this.state.projects.filter(p=>p.id!==id);
+    this.commitProjects(projects, {
+      activeProjectId: this.state.activeProjectId===id ? ((projects[0] && projects[0].id) || '') : this.state.activeProjectId,
+    });
+  }
+  addProjectStep(projectId, label){
+    const text = (label||'').trim();
+    if(!text) return;
+    this.commitProjects(this.state.projects.map(p=>p.id===projectId
+      ? Object.assign({}, p, {steps: p.steps.concat([{id:projectId+'s'+Date.now(), label:text, d:'todo'}])}) : p));
+  }
+  removeProjectStep(projectId, stepId){
+    this.commitProjects(this.state.projects.map(p=>p.id===projectId
+      ? Object.assign({}, p, {steps: p.steps.filter(s=>s.id!==stepId)}) : p));
+  }
+  toggleProjectActivity(actId){
+    const cur = this.state.projectForm.activities||[];
+    this.setProjectForm({activities: cur.indexOf(actId)>=0 ? cur.filter(x=>x!==actId) : cur.concat([actId])});
+  }
+
   resetSetup(){
     const instruments = clone(ACT_DEFS), goals = clone(SEED_GOALS), routineSteps = seedRoutineSteps();
     applyInstruments(instruments); applyGoals(goals);
@@ -956,28 +1078,63 @@ class Store {
         color: on ? 'var(--color-accent-800)' : muted};
     });
 
-    const proj = PROJECTS.find(p=>p.id===state.activeProjectId) || PROJECTS[0];
-    const projProg = this.progressOf(proj);
-    const activeProject = {
-      name: proj.name, blurb: proj.blurb, actChips: this.actChips(proj.activities),
+    // There may be no projects at all (fresh install, or all of them finished
+    // and cleared away) — every consumer below has to tolerate that.
+    const proj = state.projects.find(p=>p.id===state.activeProjectId) || state.projects[0] || null;
+    const projProg = proj ? this.progressOf(proj) : null;
+    const daysLeft = d => {
+      if(!d) return '';
+      const then = new Date(d+'T00:00:00'), now = new Date(); now.setHours(0,0,0,0);
+      const n = Math.round((then-now)/86400000);
+      if(n < 0) return 'ran over ' + (-n) + (n===-1?' day':' days') + ' ago';
+      if(n === 0) return 'due today';
+      if(n === 1) return '1 day left';
+      return n + ' days left';
+    };
+    const activeProject = proj ? {
+      id: proj.id, name: proj.name, blurb: proj.blurb, actChips: this.actChips(proj.activities),
       progressLabel: projProg.label+' done',
+      goalName: (GOALS.find(g=>g.id===proj.goalId)||{}).name || '',
+      untilLabel: daysLeft(proj.until),
       openSteps: proj.steps.filter(s=>this.stepStatusOf(s)!=='done').slice(0,3).map(s=>this.stepView(s)),
       logIt: ()=>this.jumpToLog(proj.activities[0], proj.id),
-    };
-    const projectChips = PROJECTS.map(p=>{
+      remove: ()=>this.removeProject(proj.id),
+    } : null;
+    const projectChips = state.projects.map(p=>{
       const on = p.id===state.activeProjectId;
       return {name:p.name, select:()=>{ this.setState({activeProjectId:p.id}); this.persist({activeProjectId:p.id}); },
               border: on ? 'var(--color-accent)' : 'var(--color-divider)',
               bg: on ? 'var(--color-accent-100)' : 'transparent',
               color: on ? 'var(--color-accent-800)' : muted};
     });
+    const pf = state.projectForm;
+    const projectForm = {
+      open: pf.open, name: pf.name, blurb: pf.blurb, steps: pf.steps, until: pf.until, goalId: pf.goalId,
+      goalOptions: GOALS.filter(g=>!g.archived).map(g=>({value:g.id, name:g.name})),
+      actChips: ACTIVITIES.filter(a=>a.id!=='other').map(a=>{
+        const on = pf.activities.indexOf(a.id)>=0;
+        return {name:a.name, toggle:()=>this.toggleProjectActivity(a.id),
+          border: on ? a.stroke : 'var(--color-divider)',
+          bg: on ? 'color-mix(in srgb, '+a.stroke+' 10%, transparent)' : 'transparent',
+          color: on ? a.stroke : muted};
+      }),
+      setName: e=>this.setProjectForm({name:e.target.value}),
+      setBlurb: e=>this.setProjectForm({blurb:e.target.value}),
+      setGoal: e=>this.setProjectForm({goalId:e.target.value}),
+      setSteps: e=>this.setProjectForm({steps:e.target.value}),
+      setUntil: e=>this.setProjectForm({until:e.target.value}),
+      openIt: ()=>this.setProjectForm({open:true}),
+      cancel: ()=>this.setProjectForm({open:false, name:'', blurb:'', goalId:'', activities:[], steps:'', until:''}),
+      submit: ()=>this.addProject(),
+    };
 
     return {
       todayHeading: state.mode==='project' ? 'The sprint continues.' : 'Today’s rotation.',
       isDefaultMode: state.mode==='default', isProjectMode: state.mode==='project',
       setDefaultMode: ()=>{ this.setState({mode:'default'}); this.persist({mode:'default'}); },
       setProjectMode: ()=>{ this.setState({mode:'project'}); this.persist({mode:'project'}); },
-      projectChips, activeProject, rotationItems, anchorItems,
+      projectChips, activeProject, hasProjects: state.projects.length>0, projectForm,
+      rotationItems, anchorItems,
       goToLog: ()=>this.setState({tab:'log'}),
       addableToday, hasAddable: addableToday.length>0,
       goalPeek,
@@ -1678,6 +1835,10 @@ class Store {
       cancelReset: ()=>this.setState({resetArmed:false}),
       doReset: ()=>this.resetSetup(),
       areaOptions: AREAS,
+      backupMsg: state.backupMsg,
+      exportBackup: ()=>this.exportBackup(),
+      importBackup: file=>this.importBackup(file),
+      clearBackupMsg: ()=>this.setState({backupMsg:''}),
     };
   }
 }

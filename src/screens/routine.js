@@ -83,7 +83,16 @@ export function render(state, store){
   if(r.isViewGrid){
     children.push(h('div', {style:'font-size:11.5px;line-height:1.5;color:color-mix(in srgb, var(--color-text) 50%, transparent);margin-bottom:10px'},
       'One strip per day. Tap a block to mark it done — it lands in the practice log with no detail, and you can fill that in later. Tap again to clear it. Tasks tick off the same way; ± changes how many instrument slots a day carries.'));
-    children.push(h('div', {style:'display:grid;grid-template-columns:repeat(7, 1fr);gap:1px;background:var(--color-divider);border:1px solid var(--color-divider)'}, r.weekGrid.map(gridDayCol)));
+    // The 7-day grid is wider than a phone viewport, so it scrolls inside its
+    // own track rather than pushing the page sideways (page-level horizontal
+    // scroll is what used to drag the fixed tab bar out of place).
+    children.push(h('div', {class:'weekstrip-scroll', style:'overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;margin:0 -20px;padding:0 20px'}, [
+      h('div', {style:'display:grid;grid-template-columns:repeat(7, minmax(72px, 1fr));gap:1px;background:var(--color-divider);border:1px solid var(--color-divider);min-width:520px'}, r.weekGrid.map(gridDayCol)),
+    ]));
+    children.push(h('div', {style:'display:flex;align-items:center;gap:6px;margin-top:7px;font-size:10.5px;color:color-mix(in srgb, var(--color-text) 42%, transparent)'}, [
+      h('svg', {width:12, height:12, viewBox:'0 0 24 24', fill:'none', stroke:'currentColor', 'stroke-width':2, 'stroke-linecap':'round', 'stroke-linejoin':'round', style:'flex:none'}, [h('path', {d:'M8 7 3 12l5 5M16 7l5 5-5 5'})]),
+      'Swipe the strips sideways for the rest of the week.',
+    ]));
     children.push(h('div', {style:'display:flex;gap:8px;flex-wrap:wrap;margin-top:10px'}, r.gridLegend.map(l =>
       h('span', {style:'display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:color-mix(in srgb, var(--color-text) 60%, transparent);white-space:nowrap'}, [
         h('span', {style:`width:7px;height:7px;border-radius:999px;border:2px solid ${l.stroke}`}),

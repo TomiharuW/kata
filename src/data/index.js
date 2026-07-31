@@ -255,17 +255,19 @@ export const SHAKU_ROUTINE = [
 ];
 export function seedRoutineSteps(){ return clone(SHAKU_ROUTINE).map(s=>Object.assign({inst:'shaku'}, s)); }
 export const LICK_SOURCES = ['Honkyoku','Shōmyō','Improv','City pop','By ear'];
+// The phrase library ships with its real content, but no play history —
+// `plays` fills in as you tick them off while logging a shakuhachi session.
 export function seedLicks(){
-  const ago = n => { const d=new Date(); d.setDate(d.getDate()-n); return toKey(d); };
+  const today = toKey(new Date());
   return [
     {id:'lk1', name:'Shōmyō phrase — from Kevin', source:'Shōmyō', notation:'ロ ─ ツ レ ─ ロ',
-     note:'Straight out of chant. Low, no vibrato, one breath, no hurry.', added:ago(9), plays:[ago(9), ago(4)]},
+     note:'Straight out of chant. Low, no vibrato, one breath, no hurry.', added:today, plays:[]},
     {id:'lk2', name:'Kokū opening — breath as rhythm', source:'Honkyoku', notation:'ロ〜 ツメリ ─ レ',
-     note:'Let the meri sag before it resolves. The silence is half the phrase.', added:ago(21), plays:[ago(21), ago(12), ago(4)]},
+     note:'Let the meri sag before it resolves. The silence is half the phrase.', added:today, plays:[]},
     {id:'lk3', name:'Octave snap into ハ', source:'Improv', notation:'ロ ↑ ハ',
-     note:'Pout, don’t push. Sits right on the break.', added:ago(6), plays:[ago(6)]},
+     note:'Pout, don’t push. Sits right on the break.', added:today, plays:[]},
     {id:'lk4', name:'Stay With Me — head, by ear', source:'City pop', notation:'',
-     note:'Sits well in the lower octave; slide into the fourth instead of tonguing it.', added:ago(14), plays:[ago(14), ago(7), ago(2)]},
+     note:'Sits well in the lower octave; slide into the fourth instead of tonguing it.', added:today, plays:[]},
   ];
 }
 
@@ -280,86 +282,54 @@ export const DEFAULT_TASKS = [
 
 export let GOALS = [
   {id:'g1', area:'Music', name:'Idiomatic improvisation on jazz trumpet', activities:['trumpet','ear','piano'], steps:[
-    {id:'g1s1', label:'ii–V vocabulary clean in all twelve keys', d:'done'},
-    {id:'g1s2', label:'Transcribe four choruses by ear, no score', d:'progress'},
+    {id:'g1s1', label:'ii–V vocabulary clean in all twelve keys', d:'todo'},
+    {id:'g1s2', label:'Transcribe four choruses by ear, no score', d:'todo'},
     {id:'g1s3', label:'One standard from memory at three tempos', d:'todo'},
     {id:'g1s4', label:'Sit in at a session and take a full chorus', d:'todo'},
   ]},
   {id:'g2', area:'Music', name:'Idiomatic shakuhachi — honkyoku ornaments, meri/kari', activities:['shaku'], steps:[
-    {id:'g2s1', label:'Meri stable across the lower octave', d:'progress'},
+    {id:'g2s1', label:'Meri stable across the lower octave', d:'todo'},
     {id:'g2s2', label:'Two honkyoku memorised end to end', d:'todo'},
-    {id:'g2s3', label:'Ornament vocabulary written into my own notation', d:'progress'},
+    {id:'g2s3', label:'Ornament vocabulary written into my own notation', d:'todo'},
     {id:'g2s4', label:'Record one piece worth keeping', d:'todo'},
   ]},
   {id:'g3', area:'Music', name:'Composition — finish and deliver, not just start', activities:['comp','piano','shino','shaku'], steps:[
-    {id:'g3s1', label:'A cue a fortnight, delivered', d:'progress'},
-    {id:'g3s2', label:'Build a personal template that survives a deadline', d:'done'},
+    {id:'g3s1', label:'A cue a fortnight, delivered', d:'todo'},
+    {id:'g3s2', label:'Build a personal template that survives a deadline', d:'todo'},
     {id:'g3s3', label:'Score one documentary reel start to finish', d:'todo'},
   ]},
   {id:'g4', area:'Brass band', name:'Brass band repertoire and arranging', activities:['trumpet','comp','piano'], steps:[
-    {id:'g4s1', label:'Four arrangements the band can actually read', d:'progress'},
-    {id:'g4s2', label:'Rehearsal plan written before each Saturday', d:'done'},
+    {id:'g4s1', label:'Four arrangements the band can actually read', d:'todo'},
+    {id:'g4s2', label:'Rehearsal plan written before each Saturday', d:'todo'},
     {id:'g4s3', label:'A programme that holds a full concert', d:'todo'},
   ]},
   {id:'g5', area:'Health / strength', name:'Strength training that survives a sprint week', activities:['strength'], steps:[
-    {id:'g5s1', label:'Three sessions a week for eight weeks', d:'progress'},
+    {id:'g5s1', label:'Three sessions a week for eight weeks', d:'todo'},
     {id:'g5s2', label:'Bodyweight press, clean form', d:'todo'},
     {id:'g5s3', label:'Keep it running through a project sprint', d:'todo'},
   ]},
   {id:'g6', area:'Japanese', name:'Read a novel without reaching for the dictionary', activities:['jpn'], steps:[
-    {id:'g6s1', label:'Daily reading, no zero days', d:'progress'},
+    {id:'g6s1', label:'Daily reading, no zero days', d:'todo'},
     {id:'g6s2', label:'Finish one full volume', d:'todo'},
-    {id:'g6s3', label:'Immersion on the bike counts and sticks', d:'done'},
+    {id:'g6s3', label:'Immersion on the bike counts and sticks', d:'todo'},
   ]},
 ];
 export const SEED_GOALS = GOALS.slice();
 export function applyGoals(list){ GOALS = list; }
 
-export const PROJECTS = [
-  {id:'p1', area:'Music', name:'Shakuhachi song sprint', goalId:'g2', activities:['shaku','comp','piano'],
-   blurb:'A piece built around shakuhachi and composition — honkyoku phrasing carried over a scored bed.',
-   steps:[
-    {id:'p1s1', label:'Sketch the ro-buki opening', d:'done'},
-    {id:'p1s2', label:'Fix the meri passage in the second phrase', d:'progress'},
-    {id:'p1s3', label:'Piano bed under the final section', d:'todo'},
-    {id:'p1s4', label:'Rough mix to sit with for a week', d:'todo'},
-   ]},
-  {id:'p2', area:'Brass band', name:'Brass band summer set', goalId:'g4', activities:['trumpet','comp','piano'],
-   blurb:'Three arrangements and a running order the band can hold for a full concert.',
-   steps:[
-    {id:'p2s1', label:'Arrangement one — parts out', d:'done'},
-    {id:'p2s2', label:'Arrangement two — voicing pass', d:'progress'},
-    {id:'p2s3', label:'Programme order and timings', d:'todo'},
-   ]},
-  {id:'p3', area:'Music', name:'Documentary reel — three cues', goalId:'g3', activities:['comp','piano','shino'],
-   blurb:'Underscore for a three-minute reel. Restrained, breath-led, nothing that fights the narration.',
-   steps:[
-    {id:'p3s1', label:'Spot the reel, mark the hits', d:'done'},
-    {id:'p3s2', label:'Cue one — draft', d:'progress'},
-    {id:'p3s3', label:'Cue two — draft', d:'todo'},
-    {id:'p3s4', label:'Cue three — draft', d:'todo'},
-   ]},
-  {id:'p4', area:'Music', name:'Jazz trumpet vocabulary block', goalId:'g1', activities:['trumpet','ear'],
-   blurb:'Six weeks of language and time feel over changes, every morning it comes up in rotation.',
-   steps:[
-    {id:'p4s1', label:'Twelve keys, one lick a week', d:'progress'},
-    {id:'p4s2', label:'Two transcriptions memorised', d:'todo'},
-    {id:'p4s3', label:'Play through a session set list', d:'todo'},
-   ]},
-  {id:'p5', area:'Health / strength', name:'Eight-week base block', goalId:'g5', activities:['strength'],
-   blurb:'Short sessions anchored to the lighter mornings so it survives a sprint.',
-   steps:[
-    {id:'p5s1', label:'Weeks 1–4 logged without a gap', d:'progress'},
-    {id:'p5s2', label:'Add the second press day', d:'todo'},
-   ]},
-];
-export const SEED_DONE_DATES = (()=>{
-  const m = {}; let n = 0;
-  SEED_GOALS.concat(PROJECTS).forEach(x=>x.steps.forEach(s=>{
-    if(s.d==='done'){ const d = new Date(); d.setDate(d.getDate() - (9 + n*13) % 44); m[s.id] = toKey(d); n++; }
-  }));
-  return m;
-})();
+// Live binding, same pattern as GOALS: applyProjects() rebinds this so every
+// module that imported it sees the user's current list rather than the seed.
+//
+// Ships empty — projects are short, time-boxed pushes you start yourself from
+// the Today screen's Project mode. (The original design's five demo projects
+// are preserved in reference/Kata.dc.html if they are ever wanted back.)
+export let PROJECTS = [];
+export const SEED_PROJECTS = PROJECTS.slice();
+export function applyProjects(list){ PROJECTS = list; }
+
+// Fresh slate: no fabricated completion dates. (Kept as an empty map so the
+// stepDoneAt() fallback that reads it still resolves.)
+export const SEED_DONE_DATES = {};
 
 
 export const DAYS = [
@@ -378,31 +348,6 @@ export const DEFAULT_ROTATION = {
 export const DEFAULT_BLOCKS = {ear:15, a:45, b:45, jpn:30, cardio:35, strength:25};
 export const DEFAULT_STRENGTH_DAYS = ['tue','fri'];
 
-export const WORKED = {
-  ear:['Nailed the interval drills faster than usual','Chord quality ID felt automatic today','Caught the modulation before it resolved'],
-  piano:['Left hand finally locked with the click','Voicings sat better in the upper register','Got through the passage at tempo, clean'],
-  shaku:['Meri notes centered without forcing air','The phrase breathed the way it should','Ro tone opened up, less thin'],
-  shino:['Fingerings settled into the fast run','Tone stayed steady across registers'],
-  trumpet:['Range opened up past the break','Time feel locked with the metronome','Articulation cleaner on the fast lines'],
-  taiko:['Kata felt grounded, good hip rotation','Fill locked with the rest of the pattern'],
-  jpn:['Read a full page without stopping for grammar','Recognized more kanji on sight','A grammar pattern finally clicked'],
-  comp:['Found the motif for the bridge','Orchestration draft came together fast','Cue hit the emotional beat I wanted'],
-  strength:['Form held on the last set','New PR on the main lift','Recovered well, good energy'],
-  other:['Useful tangent, worth revisiting'],
-};
-export const STUCK = {
-  ear:['Still mix up dim7 and m7b5 under time pressure','Fast passing tones still trip me up'],
-  piano:['Right hand rushes in the bridge','Pedalling muddies the fast section'],
-  shaku:['Kari still thin in the upper register','Losing air support by the end of long phrases'],
-  shino:['Ornament timing still stiff'],
-  trumpet:['Endurance drops after twenty minutes','High register goes tight under pressure'],
-  taiko:['Left-right balance breaks down at speed'],
-  jpn:['Casual speech patterns still trip me up','Handwriting recall is slow'],
-  comp:['Bridge still feels like a detour, not a destination','Cannot settle the orchestration for the climax'],
-  strength:['Lower back tight on deadlift day'],
-  other:['Not sure where this fits yet'],
-};
-
 export function toKey(d){
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
@@ -414,41 +359,6 @@ export function mondayOf(d){
   const off = (x.getDay()+6)%7;
   x.setDate(x.getDate()-off);
   return x;
-}
-export function seedSessions(){
-  const out = [];
-  const order = ['piano','shaku','shino','trumpet','taiko','comp'];
-  const linkFor = {trumpet:'p4', shaku:'p1', comp:'p3', strength:'p5', piano:'p2'};
-  for(let i=55;i>=0;i--){
-    const d = new Date(); d.setDate(d.getDate()-i);
-    const dateStr = toKey(d);
-    const ids = [];
-    if(i%10!==3) ids.push('ear');
-    if(i%3!==1) ids.push('jpn');
-    if(i%3===0) ids.push('strength');
-    ids.push(order[i%order.length]);
-    if(i%2===0) ids.push(order[(i+3)%order.length]);
-    ids.forEach((id,idx)=>{
-      const w = WORKED[id]||[]; const st = STUCK[id]||[];
-      const anchor = ACT_BY_ID[id].anchor;
-      const minutes = id==='strength' ? 25+(i%3)*5 : anchor ? 15+(i%2)*10 : 30+(i%4)*5;
-      const projectId = (i<18 && linkFor[id]) ? linkFor[id] : '';
-      const project = PROJECTS.find(p=>p.id===projectId);
-      out.push({
-        id: 'seed-'+dateStr+'-'+id+'-'+idx,
-        date: dateStr,
-        activity: id,
-        minutes,
-        whatWorked: w.length ? w[i%w.length] : '',
-        whereStuck: (!anchor && st.length) ? st[i%st.length] : '',
-        projectId,
-        goalId: project ? project.goalId : '',
-        steps: id==='shaku' ? ['sr1','sr2','sr6'].concat(i%2===0?['sr4']:[]).concat(i%3===0?['sr3','sr5']:[]) : [],
-        licks: id==='shaku' ? (i%3===0 ? ['lk2'] : (i%4===0 ? ['lk1','lk4'] : [])) : [],
-      });
-    });
-  }
-  return out;
 }
 export const STEP_STYLE = {
   todo: {fill:'none', stroke:'color-mix(in srgb, var(--color-text) 32%, transparent)', dash:'3 3', color:'color-mix(in srgb, var(--color-text) 62%, transparent)'},

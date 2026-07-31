@@ -40,20 +40,73 @@ const stepCircle = (s) => h('svg', {width:15, height:15, viewBox:'0 0 16 16', st
 
 function projectCard(t){
   const p = t.activeProject;
+  const meta = [p.goalName ? 'Feeds ' + p.goalName : '', p.untilLabel].filter(Boolean).join(' · ');
   return h('div', {class:'card elev-sm', style:'margin-bottom:18px'}, [
-    h('div', {class:'card-kicker'}, 'In the sprint'),
+    h('div', {style:'display:flex;align-items:baseline;gap:9px'}, [
+      h('div', {class:'card-kicker', style:'flex:1;min-width:0'}, 'In the sprint'),
+      h('button', {onClick:p.remove, class:'btn btn-icon btn-ghost', 'aria-label':'Delete project', style:'flex:none;width:26px;height:26px'}, [
+        h('svg', {width:14, height:14, viewBox:'0 0 24 24', fill:'none', stroke:'currentColor', 'stroke-width':1.8, 'stroke-linecap':'round', 'stroke-linejoin':'round'}, [
+          h('path', {d:'M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m2 0-1 13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7'}),
+        ]),
+      ]),
+    ]),
     h('div', {class:'card-title', style:'margin-bottom:4px'}, p.name),
-    h('div', {style:'font-size:13.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 75%, transparent)'}, p.blurb),
+    meta ? h('div', {style:'font-size:11px;line-height:1.45;color:var(--color-accent-700);margin-bottom:5px'}, meta) : null,
+    p.blurb ? h('div', {style:'font-size:13.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 75%, transparent)'}, p.blurb) : null,
     h('div', {style:'display:flex;gap:6px;flex-wrap:wrap;margin-top:11px'}, p.actChips.map(c =>
       h('span', {style:`font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid ${c.stroke};color:${c.stroke};white-space:nowrap`}, c.name)
     )),
     h('div', {style:'margin-top:13px;padding-top:12px;border-top:1px solid var(--color-divider)'}, [
       h('div', {style:'font-size:10.5px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 50%, transparent);margin-bottom:7px'}, `Next steps · ${p.progressLabel}`),
+      p.openSteps.length ? null : h('div', {style:'font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 48%, transparent);padding:2px 0 6px'}, 'Every step is done. Finish the push, or add the next one in Goals.'),
       ...p.openSteps.map(s => h('button', {onClick:s.cycle, style:`display:flex;align-items:center;gap:9px;width:100%;background:none;border:none;padding:7px 0;text-align:left;cursor:pointer;font-family:var(--font-body);font-size:13.5px;color:${s.color}`}, [
         stepCircle(s), s.label,
       ])),
     ]),
     h('button', {class:'btn btn-secondary btn-block', onClick:p.logIt, style:'margin-top:12px'}, 'Log against this project'),
+  ]);
+}
+
+// A project is the short-term, time-boxed sibling of a goal: it names the push,
+// binds to the goal it serves, and carries its own steps.
+function projectForm(f){
+  return h('div', {class:'card elev-sm', style:'margin-bottom:18px'}, [
+    h('div', {class:'card-kicker'}, 'New project'),
+    h('div', {class:'field', style:'margin:10px 0'}, [
+      h('label', {}, 'What is the push'),
+      h('input', {class:'input', type:'text', placeholder:'e.g. Two honkyoku by the recital', value:f.name, onChange:f.setName}),
+    ]),
+    h('div', {class:'field', style:'margin-bottom:10px'}, [
+      h('label', {}, 'In a sentence'),
+      h('textarea', {class:'input', rows:2, placeholder:'What it is and why it matters right now', value:f.blurb, onChange:f.setBlurb}),
+    ]),
+    h('div', {style:'display:flex;gap:10px;margin-bottom:10px'}, [
+      h('div', {class:'field', style:'flex:1;min-width:0'}, [
+        h('label', {}, 'Feeds which goal'),
+        h('select', {class:'input', value:f.goalId, onChange:f.setGoal}, [
+          h('option', {value:''}, 'Not tied to a goal'),
+          ...f.goalOptions.map(g => h('option', {value:g.value}, g.name)),
+        ]),
+      ]),
+      h('div', {class:'field', style:'flex:none;width:132px'}, [
+        h('label', {}, 'Done by'),
+        h('input', {class:'input', type:'date', value:f.until, onChange:f.setUntil}),
+      ]),
+    ]),
+    h('div', {class:'field', style:'margin-bottom:10px'}, [
+      h('label', {}, 'Which instruments it uses — tap to pick'),
+      h('div', {style:'display:flex;gap:6px;flex-wrap:wrap;margin-top:2px'}, f.actChips.map(c =>
+        h('button', {onClick:c.toggle, style:`padding:7px 11px;border-radius:999px;border:1px solid ${c.border};background:${c.bg};color:${c.color};font-family:var(--font-body);font-size:12px;cursor:pointer;white-space:nowrap`}, c.name)
+      )),
+    ]),
+    h('div', {class:'field', style:'margin-bottom:14px'}, [
+      h('label', {}, 'Steps — one per line'),
+      h('textarea', {class:'input', rows:4, placeholder:'Sketch the opening\nFix the meri passage\nRough mix to sit with', value:f.steps, onChange:f.setSteps}),
+    ]),
+    h('div', {style:'display:flex;gap:9px'}, [
+      h('button', {class:'btn btn-secondary', onClick:f.cancel, style:'flex:none'}, 'Cancel'),
+      h('button', {class:'btn btn-primary', onClick:f.submit, style:'flex:1'}, 'Start this project'),
+    ]),
   ]);
 }
 
@@ -168,10 +221,26 @@ export function render(state, store){
   ]));
 
   if(t.isProjectMode){
-    children.push(h('div', {style:'display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px'}, t.projectChips.map(p =>
-      h('button', {onClick:p.select, style:`border:1px solid ${p.border};background:${p.bg};color:${p.color};border-radius:999px;padding:7px 12px;font-size:12px;font-family:var(--font-body);cursor:pointer;line-height:1.3`}, p.name)
-    )));
-    children.push(projectCard(t));
+    if(t.hasProjects){
+      children.push(h('div', {style:'display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px'}, [
+        ...t.projectChips.map(p =>
+          h('button', {onClick:p.select, style:`border:1px solid ${p.border};background:${p.bg};color:${p.color};border-radius:999px;padding:7px 12px;font-size:12px;font-family:var(--font-body);cursor:pointer;line-height:1.3`}, p.name)
+        ),
+        t.projectForm.open ? null : h('button', {onClick:t.projectForm.openIt, style:'display:inline-flex;align-items:center;gap:5px;border:1px dashed var(--color-accent);background:transparent;color:var(--color-accent-700);border-radius:999px;padding:7px 12px;font-size:12px;font-family:var(--font-body);cursor:pointer;line-height:1.3'}, [
+          h('svg', {width:11, height:11, viewBox:'0 0 24 24', fill:'none', stroke:'currentColor', 'stroke-width':2.4, 'stroke-linecap':'round'}, [h('path', {d:'M12 5v14M5 12h14'})]),
+          'New',
+        ]),
+      ]));
+    }
+    if(t.projectForm.open) children.push(projectForm(t.projectForm));
+    if(t.activeProject) children.push(projectCard(t));
+    if(!t.hasProjects && !t.projectForm.open){
+      children.push(h('div', {style:'padding:6px 0 4px'}, [
+        h('div', {style:'font-size:13.5px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 62%, transparent);margin-bottom:14px'},
+          'No project running. A project is a short, time-boxed push — a handful of steps aimed at one goal, worked on until it is done. Start one and it shows up here, in the Log’s “working toward”, and on the Goals screen.'),
+        h('button', {class:'btn btn-primary btn-block', onClick:t.projectForm.openIt, style:'margin-top:0'}, 'Start a project'),
+      ]));
+    }
   }
 
   if(t.isDefaultMode){
