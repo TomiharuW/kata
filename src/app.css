@@ -1,0 +1,37 @@
+/* App-shell layout only. Component look & feel lives entirely in reference/design-system.css —
+   don't duplicate tokens here, don't hard-code colors/fonts/spacing that the design system
+   already exposes as variables. */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  overscroll-behavior-y: none;
+}
+
+#app {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+select.input {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Safe-area padding for the fixed bottom tab bar / notches, on top of the prototype's own
+   fixed 8px/12px padding (see reference/Kata.dc.html's tab bar div). */
+.kata-tabbar {
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
