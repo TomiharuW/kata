@@ -29,23 +29,31 @@ function linkCard(url, icon, title, sub){
 export function render(state, store){
   const s = store.selectStudy();
 
+  // One card, two destinations. This screen used to offer three surfaces — a
+  // form link, a sheet link, and a toggleable iframe of the same form — which
+  // is three routes to two places.
   const children = [
     h('h1', {style:'font-size:26px;margin:10px 0 6px'}, 'To Study'),
-    h('div', {style:'font-size:12.5px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:16px'}, 'The library itself lives in the sheet. Add to it with the form, read and sort it in the spreadsheet.'),
-    linkCard(s.studyFormUrl, plusIcon(), 'Add to the study library', 'The form — work, link, and what you want off it.'),
-    linkCard(s.studySheetUrl, sheetIcon(), 'Open the study spreadsheet', 'Everything captured so far, with its own columns and filters.'),
-    h('div', {style:'display:flex;align-items:baseline;gap:10px;margin:22px 0 9px'}, [
-      h('div', {style:'font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)'}, 'Fill it in here'),
-      h('button', {onClick:s.toggleStudyEmbed, style:'margin-left:auto;background:none;border:none;padding:2px 0;font-family:var(--font-body);font-size:11.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, s.studyEmbedLabel),
+    h('div', {style:'font-size:12.5px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:16px'}, 'The library lives in the sheet. Capture with the form, read and sort in the spreadsheet.'),
+    h('div', {class:'card'}, [
+      h('a', {href:s.studyFormUrl, target:'_blank', rel:'noreferrer', style:'display:flex;align-items:center;gap:13px;text-decoration:none;color:inherit'}, [
+        h('span', {style:'flex:none;width:34px;height:34px;border:1px solid var(--color-accent);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--color-accent-700)'}, [plusIcon()]),
+        h('span', {style:'flex:1;min-width:0'}, [
+          h('span', {style:'display:block;font-family:var(--font-heading);font-weight:600;font-size:15.5px;line-height:1.3'}, 'Capture something to study'),
+          h('span', {style:'display:block;font-size:12px;line-height:1.5;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-top:3px'}, 'Paste a title and a link — the rest can wait.'),
+        ]),
+        h('span', {style:'flex:none;font-size:14px;color:var(--color-accent-700)'}, '↗'),
+      ]),
+      h('a', {href:s.studySheetUrl, target:'_blank', rel:'noreferrer', style:'display:flex;align-items:center;gap:13px;text-decoration:none;color:inherit;margin-top:13px;padding-top:13px;border-top:1px solid var(--color-divider)'}, [
+        h('span', {style:'flex:none;width:34px;height:34px;border:1px solid var(--color-divider);border-radius:4px;display:flex;align-items:center;justify-content:center;color:color-mix(in srgb, var(--color-text) 55%, transparent)'}, [sheetIcon()]),
+        h('span', {style:'flex:1;min-width:0'}, [
+          h('span', {style:'display:block;font-family:var(--font-heading);font-weight:600;font-size:15.5px;line-height:1.3'}, 'Open the whole list'),
+          h('span', {style:'display:block;font-size:12px;line-height:1.5;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-top:3px'}, 'Everything captured so far, with its own columns and filters.'),
+        ]),
+        h('span', {style:'flex:none;font-size:14px;color:var(--color-accent-700)'}, '↗'),
+      ]),
     ]),
   ];
-
-  if(s.studyEmbedOpen){
-    children.push(h('div', {style:'border:1px solid var(--color-divider);border-radius:var(--radius-sm);overflow:hidden;height:620px'}, [
-      h('iframe', {src:s.studyFormUrl, title:'Add to the study library', style:'width:100%;height:100%;border:none;display:block'}),
-    ]));
-    children.push(h('div', {style:'font-size:11px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 45%, transparent);margin-top:8px'}, 'If the frame stays blank, Google is refusing to embed it — open the form in a new tab instead.'));
-  }
 
   return h('div', {}, children);
 }

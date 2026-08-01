@@ -257,35 +257,22 @@ export function render(state, store){
     ])));
   }
 
-  // Worked on, and when — attention, not completion
-  children.push(sectionHeader('Worked on, and when', inst.secWorked.count, inst.secWorked));
-  if(inst.secWorked.open){
-    if(inst.noWorkedLog){
-      children.push(h('div', {style:'font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 48%, transparent);padding-bottom:10px'}, 'Nothing marked yet. Tick a project or a goal step under “Worked on” when you log a session and it lands here with the date.'));
+  // History — worked on and finished, one timeline. These were two sections of
+  // identical shape (label, parent, date) telling one story.
+  children.push(sectionHeader('History — worked on and finished', inst.secHistory.count, inst.secHistory));
+  if(inst.secHistory.open){
+    if(inst.noHistory){
+      children.push(h('div', {style:'font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 48%, transparent);padding-bottom:10px'}, 'Nothing yet. Tick a project or goal step under “Worked on” when you log a session, or finish a step in Goals, and it lands here with the date.'));
     }
-    children.push(...inst.workedLog.map(w => h('div', {style:'display:flex;align-items:flex-start;gap:11px;padding:10px 0;border-bottom:1px solid var(--color-divider)'}, [
-      h('svg', {width:13, height:13, viewBox:'0 0 24 24', fill:'none', stroke:'var(--color-accent)', 'stroke-width':3.2, 'stroke-linecap':'round', 'stroke-linejoin':'round', style:'flex:none;margin-top:3px'}, [h('path', {d:'m5 13 4 4L19 7'})]),
+    children.push(...inst.history.map(w => h('div', {style:'display:flex;align-items:flex-start;gap:11px;padding:10px 0;border-bottom:1px solid var(--color-divider)'}, [
+      w.kind === 'done'
+        ? h('svg', {width:14, height:14, viewBox:'0 0 16 16', style:'flex:none;margin-top:3px'}, [h('circle', {cx:8, cy:8, r:6, fill:'var(--color-accent)', stroke:'var(--color-accent)', 'stroke-width':1.4})])
+        : h('svg', {width:13, height:13, viewBox:'0 0 24 24', fill:'none', stroke:'var(--color-accent)', 'stroke-width':3.2, 'stroke-linecap':'round', 'stroke-linejoin':'round', style:'flex:none;margin-top:3px'}, [h('path', {d:'m5 13 4 4L19 7'})]),
       h('div', {style:'flex:1;min-width:0'}, [
         h('div', {style:'font-size:13px;line-height:1.45'}, w.label),
-        h('div', {style:'font-size:11px;color:color-mix(in srgb, var(--color-text) 50%, transparent);margin-top:2px'}, w.parent),
+        h('div', {style:'font-size:11px;color:color-mix(in srgb, var(--color-text) 50%, transparent);margin-top:2px'}, (w.kind === 'done' ? 'Finished · ' : '') + w.parent),
       ]),
       h('div', {style:'font-size:10.5px;font-variant-numeric:tabular-nums;color:var(--color-accent-700);flex:none;text-align:right;line-height:1.4;max-width:92px'}, w.date),
-    ])));
-  }
-
-  // Finished, and when
-  children.push(sectionHeader('Finished, and when', inst.secDone.count, inst.secDone));
-  if(inst.secDone.open){
-    if(inst.noAccomplishments){
-      children.push(h('div', {style:'font-size:12.5px;color:color-mix(in srgb, var(--color-text) 48%, transparent);padding-bottom:10px'}, 'Nothing marked done for this one yet. Finish a step in Goals and it lands here with the date.'));
-    }
-    children.push(...inst.accomplishments.map(a => h('div', {style:'display:flex;align-items:flex-start;gap:11px;padding:11px 0;border-bottom:1px solid var(--color-divider)'}, [
-      h('svg', {width:15, height:15, viewBox:'0 0 16 16', style:'flex:none;margin-top:3px'}, [h('circle', {cx:8, cy:8, r:6, fill:'var(--color-accent)', stroke:'var(--color-accent)', 'stroke-width':1.4})]),
-      h('div', {style:'flex:1;min-width:0'}, [
-        h('div', {style:'font-size:13.5px;line-height:1.45'}, a.label),
-        h('div', {style:'font-size:11px;color:color-mix(in srgb, var(--color-text) 50%, transparent);margin-top:3px'}, a.parent),
-      ]),
-      h('div', {style:'font-size:11px;font-variant-numeric:tabular-nums;color:var(--color-accent-700);flex:none;text-align:right;line-height:1.4;max-width:88px'}, a.date),
     ])));
   }
 

@@ -59,7 +59,7 @@ const BACKUP_FIELDS = [
   'instruments', 'goals', 'projects', 'routineSteps',
   // Migration marker — must persist, or purgeLegacySeed() would re-run on every
   // load and keep resetting progress on the seeded goals.
-  '_seedPurged',
+  '_seedPurged', '_quickConverted',
 ];
 
 class Store {
@@ -68,6 +68,7 @@ class Store {
       // version field for future migrations — the key name stays kata_state_v2.
       _schemaVersion: 1,
       _seedPurged: false,
+      _quickConverted: false,
       tab: 'today',
       mode: 'default',
       projects: clone(SEED_PROJECTS),
@@ -202,6 +203,25 @@ class Store {
       const raw = localStorage.getItem(STORAGE_KEY);
       if(raw){
         let s = JSON.parse(raw);
+        // Sessions previously fabricated by tapping a week strip carried planned
+        // minutes as if practised. Convert them to plain ticks so the hours
+        // figures reflect only what was actually entered.
+        if(!s._quickConverted){
+          const checklist = Object.assign({}, s.checklist||{});
+          let converted = 0;
+          (s.sessions||[]).forEach(x=>{
+            if(!x.quick) return;
+            const day = Object.assign({}, checklist[x.date]||{});
+            day[x.activity] = true;
+            checklist[x.date] = day;
+            converted++;
+          });
+          s = Object.assign({}, s, {
+            sessions: (s.sessions||[]).filter(x=>!x.quick),
+            checklist, _quickConverted: true,
+          });
+          if(converted) try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }catch(e){}
+        }
         if(!s._seedPurged){
           const {patch} = this.purgeLegacySeed(s);
           s = Object.assign({}, s, patch, {_seedPurged: true});
@@ -217,7 +237,7 @@ class Store {
         applyProjects(projects);
         this.setState({
           instruments, goals, projects,
-          _seedPurged: true,
+          _seedPurged: true, _quickConverted: true,
           routineSteps: (s.routineSteps && s.routineSteps.length) ? s.routineSteps : seedRoutineSteps(),
           sessions: s.sessions||[], checklist: s.checklist||{}, mode: s.mode||'default',
           activeProjectId: s.activeProjectId || (projects[0] && projects[0].id) || '', stepStatus: s.stepStatus||{},
@@ -533,21 +553,23 @@ class Store {
   sessionFor(dateKey, actId){
     return this.state.sessions.find(s=>s.date===dateKey && s.activity===actId) || null;
   }
-  toggleQuickLog(dateKey, actId, mins){
-    const found = this.sessionFor(dateKey, actId);
-    if(found){
-      if(!found.quick) return;
-      const sessions = this.state.sessions.filter(s=>s.id!==found.id);
-      this.setState({sessions});
-      this.persist({sessions});
-      return;
-    }
-    const session = {id:'qk-'+dateKey+'-'+actId+'-'+Date.now(), date:dateKey, activity:actId,
-      minutes:Number(mins)||0, whatWorked:'', whereStuck:'', projectId:'', goalId:'',
-      steps:[], licks:[], quick:true};
-    const sessions = [session].concat(this.state.sessions);
-    this.setState({sessions});
-    this.persist({sessions});
+  // Ticking a block marks it done for that day. It deliberately does NOT
+  // create a session: a session carries minutes you actually practised, and
+  // fabricating one from the planned block time inflated every hours figure in
+  // the app with numbers that were never entered.
+  toggleQuickLog(dateKey, actId){
+    if(this.sessionFor(dateKey, actId)) return; // a real logged session wins
+    const day = Object.assign({}, this.state.checklist[dateKey]);
+    if(day[actId]) delete day[actId]; else day[actId] = true;
+    const checklist = Object.assign({}, this.state.checklist, {[dateKey]: day});
+    this.setState({checklist});
+    this.persist({checklist});
+  }
+  // Done on a given day = explicitly ticked, or a real session exists.
+  isDoneOn(dateKey, actId){
+    const d = this.state.checklist[dateKey];
+    if(d && d[actId]) return true;
+    return !!this.sessionFor(dateKey, actId);
   }
   fillInQuick(id){
     const s = this.state.sessions.find(x=>x.id===id);
@@ -889,11 +911,7 @@ class Store {
   }
 
   checklistKey(){ return toKey(new Date()); }
-  isChecked(id){
-    const key = this.checklistKey();
-    if(this.state.checklist[key] && this.state.checklist[key][id]) return true;
-    return this.state.sessions.some(s=>s.date===key && s.activity===id);
-  }
+  isChecked(id){ return this.isDoneOn(this.checklistKey(), id); }
   toggleChecklist(id){
     const key = this.checklistKey();
     const day = Object.assign({}, this.state.checklist[key]);
@@ -1484,7 +1502,7 @@ class Store {
       items.push({actId:'other', label:'Bike', mins:blocks.cardio, firm:false});
       if((state.routine.strengthDays||[]).indexOf(d.id)>=0) items.push({actId:'strength', label:'Str', mins:blocks.strength, firm:false});
       const tappable = dk<=todayKey;
-      const doneCount = items.filter(b=>!!this.sessionFor(dk, b.actId)).length;
+      const doneCount = items.filter(b=>this.isDoneOn(dk, b.actId)).length;
       return {
         name:d.name, dateNum: String(dd.getDate()), isToday: dk===todayKey,
         doneLabel: doneCount ? doneCount+'/'+items.length : '',
@@ -1496,17 +1514,17 @@ class Store {
         items: items.map(b=>{
           const a = actOf(b.actId);
           const sess = this.sessionFor(dk, b.actId);
-          const done = !!sess;
-          const detailed = done && !sess.quick;
+          const done = this.isDoneOn(dk, b.actId);
+          const detailed = !!sess;
           return {label:b.label, mins:String(b.mins), stroke:a.stroke, done,
-                  title: a.name+' · '+b.mins+' min · ' + (detailed ? 'logged with detail' : done ? 'ticked — tap to clear' : (tappable ? 'tap to mark done' : 'later this week')),
+                  title: a.name+' · '+b.mins+' min planned · ' + (detailed ? sess.minutes+' min logged' : done ? 'ticked — tap to clear' : (tappable ? 'tap to mark done' : 'later this week')),
                   bg: done ? 'color-mix(in srgb, '+a.stroke+' 26%, transparent)'
                            : (b.firm ? 'color-mix(in srgb, '+a.stroke+' 10%, transparent)' : 'transparent'),
                   borderStyle: done ? 'solid' : (b.firm ? 'solid' : 'dashed'),
                   labelWeight: done ? '600' : '400',
                   tickOpacity: done ? 1 : 0,
                   cursor: tappable ? 'pointer' : 'default',
-                  toggle: tappable ? (()=>this.toggleQuickLog(dk, b.actId, b.mins)) : (()=>{})};
+                  toggle: tappable ? (()=>this.toggleQuickLog(dk, b.actId)) : (()=>{})};
         }),
         // The strips carry project work, not the generic daily habits — a
         // project lands on its due date, or on every day while it is in sprint.
@@ -1921,8 +1939,14 @@ class Store {
     inst.secRoutine = mkSec('routine', libSteps.length);
     inst.secLicks = mkSec('licks', inst.licks.length);
     inst.secStuck = mkSec('stuck', inst.stuckNotes.length);
-    inst.secDone = mkSec('done', inst.accomplishments.length);
-    inst.secWorked = mkSec('worked', inst.workedLog.length);
+    // One history: what was worked on and what was finished, newest first.
+    // These were two sections of identical shape reading as one story.
+    inst.history = inst.workedLog.map(w=>Object.assign({}, w, {kind:'worked'}))
+      .concat(inst.accomplishments.map(a=>Object.assign({}, a, {kind:'done'})))
+      .sort((a,b)=> a.sortKey<b.sortKey?1:a.sortKey>b.sortKey?-1:0)
+      .slice(0, 80);
+    inst.noHistory = inst.history.length===0;
+    inst.secHistory = mkSec('history', inst.history.length);
     inst.secChart = mkSec('chart', 8);
 
     const lq = state.libQuery.trim().toLowerCase();
