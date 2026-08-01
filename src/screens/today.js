@@ -52,6 +52,7 @@ function projectCard(t){
     ]),
     h('div', {class:'card-title', style:'margin-bottom:4px'}, p.name),
     meta ? h('div', {style:'font-size:11px;line-height:1.45;color:var(--color-accent-700);margin-bottom:5px'}, meta) : null,
+    h('button', {onClick:p.toggleSprint, style:`align-self:flex-start;padding:5px 10px;border-radius:999px;border:1px ${p.sprint?'solid':'dashed'} ${p.sprint?'var(--color-accent)':'var(--color-divider)'};background:${p.sprint?'var(--color-accent-100)':'transparent'};color:${p.sprint?'var(--color-accent-800)':'color-mix(in srgb, var(--color-text) 55%, transparent)'};font-family:var(--font-body);font-size:11px;cursor:pointer;margin-bottom:6px`}, p.sprintLabel),
     p.blurb ? h('div', {style:'font-size:13.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 75%, transparent)'}, p.blurb) : null,
     h('div', {style:'display:flex;gap:6px;flex-wrap:wrap;margin-top:11px'}, p.actChips.map(c =>
       h('span', {style:`font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid ${c.stroke};color:${c.stroke};white-space:nowrap`}, c.name)
@@ -93,6 +94,8 @@ function projectForm(f){
         h('input', {class:'input', type:'date', value:f.until, onChange:f.setUntil}),
       ]),
     ]),
+    h('button', {onClick:f.toggleSprint, style:`align-self:flex-start;padding:7px 12px;border-radius:999px;border:1px ${f.sprint?'solid':'dashed'} ${f.sprint?'var(--color-accent)':'var(--color-divider)'};background:${f.sprint?'var(--color-accent-100)':'transparent'};color:${f.sprint?'var(--color-accent-800)':'color-mix(in srgb, var(--color-text) 55%, transparent)'};font-family:var(--font-body);font-size:11.5px;cursor:pointer;margin-bottom:10px`},
+      f.sprint ? 'Sprint mode on — shows on every routine day' : 'Sprint mode off — shows on its due date only'),
     h('div', {class:'field', style:'margin-bottom:10px'}, [
       h('label', {}, 'Which instruments it uses — tap to pick'),
       h('div', {style:'display:flex;gap:6px;flex-wrap:wrap;margin-top:2px'}, f.actChips.map(c =>

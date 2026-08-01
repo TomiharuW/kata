@@ -120,8 +120,8 @@ export function render(state, store){
         )),
         h('div', {style:'font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:5px'}, 'Steps'),
         g.noSteps ? h('div', {style:'font-size:12px;color:color-mix(in srgb, var(--color-text) 48%, transparent);padding-bottom:6px'}, 'No steps yet.') : null,
-        ...g.steps.map(st => h('div', {style:'display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--color-divider)'}, [
-          h('div', {style:'flex:1;min-width:0;font-size:12.5px;line-height:1.4'}, st.label),
+        ...g.steps.map(st => h('div', {style:'display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid var(--color-divider)'}, [
+          h('input', {class:'input', style:'flex:1;min-width:0;font-size:12.5px;padding:6px 8px', value:st.label, onChange:st.rename}),
           h('span', {style:'flex:none;font-size:10px;letter-spacing:0.05em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 42%, transparent)'}, st.statusLabel),
           h('button', {onClick:st.remove, class:'btn btn-icon btn-ghost', 'aria-label':'Remove step', style:'flex:none'}, [trashIcon()]),
         ])),
@@ -136,6 +136,62 @@ export function render(state, store){
       ]) : null,
     ])));
     children.push(h('button', {onClick:s.newGoalFromSetup, style:'background:none;border:none;padding:8px 0 0;font-family:var(--font-body);font-size:11.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, '＋ new goal'));
+  }
+
+  // Projects — same editing shape as goals, plus the time-box date and the
+  // goal each one feeds.
+  children.push(sectionHeader('Projects', s.secProjects));
+  if(s.secProjects.open){
+    if(!s.setupProjects.length){
+      children.push(h('div', {style:'font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 48%, transparent)'}, 'No projects yet. Start one from Today, under Project.'));
+    }
+    children.push(...s.setupProjects.map(p => h('div', {style:'padding:11px 0;border-bottom:1px solid var(--color-divider)'}, [
+      h('div', {style:'display:flex;align-items:center;gap:10px'}, [
+        h('span', {style:`width:9px;height:9px;border-radius:999px;border:2px solid ${p.stroke};flex:none`}),
+        h('input', {class:'input', style:'flex:1;min-width:0;font-size:13.5px;padding:7px 9px', value:p.name, onChange:p.rename}),
+        h('span', {style:'flex:none;font-size:11px;font-variant-numeric:tabular-nums;color:color-mix(in srgb, var(--color-text) 45%, transparent)'}, p.progressLabel),
+        h('button', {onClick:p.toggle, 'aria-label':'Edit project', style:'flex:none;background:none;border:none;padding:6px;cursor:pointer;display:flex;align-items:center'}, [chevronBtn(p.chevron)]),
+      ]),
+      h('div', {style:'font-size:10.5px;line-height:1.4;color:color-mix(in srgb, var(--color-text) 45%, transparent);margin:5px 0 0 19px'}, `${p.goalName} · ${p.instLabel}`),
+      p.open ? h('div', {style:'padding:11px 0 2px 19px'}, [
+        h('div', {class:'field', style:'margin-bottom:10px'}, [
+          h('label', {}, 'In a sentence'),
+          h('textarea', {class:'input', rows:2, value:p.blurb, onChange:p.setBlurb}),
+        ]),
+        h('div', {style:'display:flex;gap:9px;margin-bottom:11px'}, [
+          h('div', {class:'field', style:'flex:1;min-width:0'}, [
+            h('label', {}, 'Feeds which goal'),
+            h('select', {class:'input', value:p.goalId, onChange:p.setGoal}, [
+              h('option', {value:''}, 'Not tied to a goal'),
+              ...p.goalOptions.map(o => h('option', {value:o.value}, o.name)),
+            ]),
+          ]),
+          h('div', {class:'field', style:'flex:none;width:132px'}, [
+            h('label', {}, 'Done by'),
+            h('input', {class:'input', type:'date', value:p.until, onChange:p.setUntil}),
+          ]),
+        ]),
+        h('button', {onClick:p.toggleSprint, style:`padding:7px 12px;border-radius:999px;border:1px ${p.sprint?'solid':'dashed'} ${p.sprint?'var(--color-accent)':'var(--color-divider)'};background:${p.sprint?'var(--color-accent-100)':'transparent'};color:${p.sprint?'var(--color-accent-800)':'color-mix(in srgb, var(--color-text) 55%, transparent)'};font-family:var(--font-body);font-size:11.5px;cursor:pointer;margin-bottom:12px`}, p.sprintLabel),
+        h('div', {style:'font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:7px'}, 'Instruments it uses'),
+        h('div', {style:'display:flex;gap:5px;flex-wrap:wrap;margin-bottom:13px'}, p.actChips.map(c =>
+          h('button', {onClick:c.toggle, style:`padding:5px 10px;border-radius:999px;border:1px solid ${c.border};background:${c.bg};color:${c.color};font-family:var(--font-body);font-size:11px;cursor:pointer;white-space:nowrap`}, c.name)
+        )),
+        h('div', {style:'font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:5px'}, 'Steps'),
+        p.noSteps ? h('div', {style:'font-size:12px;color:color-mix(in srgb, var(--color-text) 48%, transparent);padding-bottom:6px'}, 'No steps yet.') : null,
+        ...p.steps.map(st => h('div', {style:'display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid var(--color-divider)'}, [
+          h('input', {class:'input', style:'flex:1;min-width:0;font-size:12.5px;padding:6px 8px', value:st.label, onChange:st.rename}),
+          h('span', {style:'flex:none;font-size:10px;letter-spacing:0.05em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 42%, transparent)'}, st.statusLabel),
+          h('button', {onClick:st.remove, class:'btn btn-icon btn-ghost', 'aria-label':'Remove step', style:'flex:none'}, [trashIcon()]),
+        ])),
+        h('div', {style:'display:flex;gap:8px;margin-top:11px'}, [
+          h('input', {class:'input', style:'flex:1;min-width:0;font-size:12.5px;padding:7px 9px', placeholder:'Add a step', value:p.newStep, onChange:p.setNewStep}),
+          h('button', {onClick:p.addStep, class:'btn btn-secondary', style:'flex:none;font-size:12px;padding:7px 12px'}, 'Add'),
+        ]),
+        h('div', {style:'margin-top:13px'}, [
+          h('button', {onClick:p.remove, style:'background:none;border:1px solid var(--color-divider);color:var(--color-accent-700);border-radius:4px;padding:7px 11px;font-family:var(--font-body);font-size:11.5px;cursor:pointer'}, 'Delete this project'),
+        ]),
+      ]) : null,
+    ])));
   }
 
   // Backup & restore — a full snapshot of everything persisted (sessions,

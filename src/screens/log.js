@@ -89,8 +89,20 @@ function sessionCard(s){
       h('button', {onClick:s.fillIn, style:'flex:none;background:none;border:1px solid var(--color-accent);color:var(--color-accent-700);border-radius:4px;padding:6px 10px;font-family:var(--font-body);font-size:11px;cursor:pointer'}, 'Fill it in'),
     ]));
   }
-  if(s.linkName){
+  if(s.workedProjects.length){
+    kids.push(h('div', {style:'display:flex;gap:5px;flex-wrap:wrap;margin-top:8px'}, s.workedProjects.map(p =>
+      h('span', {style:`font-size:10.5px;padding:3px 9px;border-radius:999px;border:1px solid ${p.stroke};color:${p.stroke};white-space:nowrap`}, p.name)
+    )));
+  } else if(s.linkName){
     kids.push(h('div', {style:'margin-top:8px'}, [h('span', {class:'tag tag-outline', style:'font-size:11px'}, s.linkName)]));
+  }
+  if(s.workedSteps.length){
+    kids.push(h('div', {style:'display:flex;flex-direction:column;gap:3px;margin-top:8px'}, s.workedSteps.map(w =>
+      h('div', {style:'display:flex;gap:7px;font-size:11.5px;line-height:1.45;color:color-mix(in srgb, var(--color-text) 70%, transparent)'}, [
+        h('svg', {width:11, height:11, viewBox:'0 0 24 24', fill:'none', stroke:'var(--color-accent)', 'stroke-width':3.4, 'stroke-linecap':'round', 'stroke-linejoin':'round', style:'flex:none;margin-top:3px'}, [h('path', {d:'m5 13 4 4L19 7'})]),
+        h('span', {style:'flex:1;min-width:0'}, [w.label, w.parent ? h('span', {style:'color:color-mix(in srgb, var(--color-text) 42%, transparent)'}, ' · '+w.parent) : null]),
+      ])
+    )));
   }
   if(s.routineLabel){
     kids.push(h('div', {style:'font-size:11px;font-variant-numeric:tabular-nums;color:color-mix(in srgb, var(--color-text) 50%, transparent);margin-top:8px'}, s.routineLabel));
@@ -113,6 +125,54 @@ function sessionCard(s){
   return h('div', {class:'card', style:`margin-bottom:10px;border-left:3px solid ${s.stroke}`}, kids);
 }
 
+// "Worked on" — tick as many projects and goal steps as the session touched.
+// Everything ticked here is stamped with the session's date and surfaces in
+// the Library under "Worked on, and when".
+function workedOnPanel(l){
+  const kids = [
+    h('div', {style:'display:flex;align-items:baseline;gap:8px;margin-bottom:7px'}, [
+      h('div', {style:'font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)'}, 'Worked on'),
+      h('div', {style:'margin-left:auto;font-size:11px;font-variant-numeric:tabular-nums;color:color-mix(in srgb, var(--color-text) 45%, transparent)'}, l.workedLabel),
+    ]),
+  ];
+
+  if(l.projectPicks.length){
+    kids.push(h('div', {style:'font-size:11px;color:color-mix(in srgb, var(--color-text) 48%, transparent);margin-bottom:6px'}, 'Projects — tap any that this session pushed forward'));
+    kids.push(h('div', {style:'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px'}, l.projectPicks.map(p =>
+      h('button', {onClick:p.toggle, style:`display:inline-flex;align-items:center;gap:5px;padding:7px 11px;border-radius:999px;border:1px solid ${p.border};background:${p.bg};color:${p.color};font-family:var(--font-body);font-size:12px;cursor:pointer;line-height:1.3;text-align:left`}, [
+        p.on ? h('svg', {width:11, height:11, viewBox:'0 0 24 24', fill:'none', stroke:'currentColor', 'stroke-width':3, 'stroke-linecap':'round', 'stroke-linejoin':'round', style:'flex:none'}, [h('path', {d:'m5 13 4 4L19 7'})]) : null,
+        p.name,
+      ])
+    )));
+  }
+
+  if(l.stepPickGroups.length){
+    kids.push(h('div', {style:'font-size:11px;color:color-mix(in srgb, var(--color-text) 48%, transparent);margin-bottom:4px'}, 'Goal steps — tick what you actually touched'));
+    l.stepPickGroups.forEach(g => {
+      kids.push(h('div', {style:'display:flex;align-items:center;gap:7px;margin:9px 0 2px'}, [
+        h('span', {style:`width:7px;height:7px;border-radius:999px;border:2px solid ${g.stroke};flex:none`}),
+        h('div', {style:'font-size:11.5px;line-height:1.3;font-family:var(--font-heading);font-weight:600;min-width:0'}, g.name),
+      ]));
+      g.steps.forEach(s => {
+        kids.push(h('button', {onClick:s.toggle, style:`display:flex;align-items:flex-start;gap:9px;width:100%;background:none;border:none;padding:6px 0 6px 14px;text-align:left;cursor:pointer;font-family:var(--font-body);font-size:12.5px;line-height:1.45;color:${s.color}`}, [
+          h('svg', {width:15, height:15, viewBox:'0 0 20 20', style:'flex:none;margin-top:1px'}, [
+            h('rect', {x:2, y:2, width:16, height:16, rx:3, fill:s.fill, stroke:s.mark, 'stroke-width':1.5}),
+            s.on ? h('path', {d:'m6 10.5 2.6 2.6L14.5 7', fill:'none', stroke:'var(--color-bg)', 'stroke-width':2, 'stroke-linecap':'round', 'stroke-linejoin':'round'}) : null,
+          ]),
+          h('span', {style:'flex:1;min-width:0'}, s.label),
+        ]));
+      });
+    });
+  }
+
+  if(!l.projectPicks.length && !l.stepPickGroups.length){
+    kids.push(h('div', {style:'font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 48%, transparent)'},
+      'Nothing tied to this activity yet. Add a goal or start a project and its steps show up here to tick off.'));
+  }
+
+  return h('div', {style:'margin:4px 0 14px;padding-top:12px;border-top:1px solid var(--color-divider)'}, kids);
+}
+
 export function render(state, store){
   const l = store.selectLog();
   const f = l.form;
@@ -120,21 +180,17 @@ export function render(state, store){
   const formChildren = [
     h('div', {class:'card-kicker'}, 'New entry'),
     h('div', {style:'display:flex;gap:10px;margin:10px 0'}, [
-      h('div', {class:'field', style:'flex:1'}, [h('label', {}, 'Date'), h('input', {class:'input', type:'date', value:f.date, onChange:l.setFormDate})]),
-      h('div', {class:'field', style:'flex:1'}, [
+      h('div', {class:'field', style:'flex:1;min-width:0'}, [h('label', {}, 'Date'), h('input', {class:'input', type:'date', value:f.date, onChange:l.setFormDate})]),
+      h('div', {class:'field', style:'flex:none;width:112px'}, [h('label', {}, 'Time'), h('input', {class:'input', type:'time', value:f.time, onChange:l.setFormTime})]),
+    ]),
+    h('div', {style:'display:flex;gap:10px;margin-bottom:10px'}, [
+      h('div', {class:'field', style:'flex:1;min-width:0'}, [
         h('label', {}, 'Activity'),
         h('select', {class:'input', value:f.activity, onChange:l.setFormActivity}, l.activityOptions.map(a => h('option', {value:a.id}, a.name))),
       ]),
+      h('div', {class:'field', style:'flex:none;width:112px'}, [h('label', {}, 'Minutes'), h('input', {class:'input', type:'number', min:1, placeholder:'30', value:f.minutes, onChange:l.setFormMinutes})]),
     ]),
-    h('div', {class:'field', style:'margin-bottom:10px'}, [h('label', {}, 'Minutes'), h('input', {class:'input', type:'number', min:1, placeholder:'e.g. 30', value:f.minutes, onChange:l.setFormMinutes})]),
-    h('div', {class:'field', style:'margin-bottom:10px'}, [
-      h('label', {}, `Working toward — ${l.linkHint}`),
-      h('select', {class:'input', value:f.link, onChange:l.setFormLink}, [
-        h('option', {value:''}, 'Nothing in particular'),
-        ...l.linkProjects.map(p => h('option', {value:p.value}, `▸ ${p.name}`)),
-        ...l.linkGoals.map(g => h('option', {value:g.value}, `◦ ${g.name}`)),
-      ]),
-    ]),
+    workedOnPanel(l),
   ];
   if(l.isShakuLog) formChildren.push(routinePanel(l));
   formChildren.push(

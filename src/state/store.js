@@ -40,6 +40,16 @@ const PROPS = {
 const MUTED = 'color-mix(in srgb, var(--color-text) 60%, transparent)';
 const STORAGE_KEY = 'kata_state_v2';
 
+// 'HH:MM' for the moment the form is opened — sessions default to now.
+const nowTime = () => {
+  const d = new Date();
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+};
+const blankForm = (activity) => ({
+  date: toKey(new Date()), time: nowTime(), activity: activity||'piano', minutes: '',
+  whatWorked: '', whereStuck: '', projectIds: [], goalStepIds: [], steps: [], licks: [],
+});
+
 // Every field persisted to localStorage — kept as one list so persist(), the
 // full-backup export, and import all agree on what "everything" means.
 const BACKUP_FIELDS = [
@@ -62,7 +72,7 @@ class Store {
       mode: 'default',
       projects: clone(SEED_PROJECTS),
       activeProjectId: (SEED_PROJECTS[0] && SEED_PROJECTS[0].id) || '',
-      projectForm: {open:false, name:'', blurb:'', goalId:'', activities:[], steps:'', until:''},
+      projectForm: {open:false, name:'', blurb:'', goalId:'', activities:[], steps:'', until:'', sprint:false},
       sessions: [],
       checklist: {},
       stepStatus: {},
@@ -116,7 +126,7 @@ class Store {
       licks: seedLicks(),
       lickForm: {open:false, name:'', source:'Honkyoku', notation:'', note:''},
       openCue: {},
-      form: {date: toKey(new Date()), activity: 'piano', minutes: '', whatWorked: '', whereStuck: '', link: '', steps: [], licks: []},
+      form: blankForm('piano'),
       backupMsg: '',
     };
     this.listeners = new Set();
@@ -532,7 +542,7 @@ class Store {
     if(!s) return;
     const sessions = this.state.sessions.filter(x=>x.id!==id);
     this.setState({sessions, tab:'log', sort:'newest',
-      form: Object.assign({}, this.state.form, {date:s.date, activity:s.activity, minutes:String(s.minutes||''), whatWorked:'', whereStuck:'', link:'', steps:[], licks:[]})});
+      form: Object.assign({}, blankForm(s.activity), {date:s.date, time:s.time||nowTime(), minutes:String(s.minutes||'')})});
     this.persist({sessions});
   }
 
@@ -573,7 +583,7 @@ class Store {
     const extra = {routine, tasks, goals, routineSteps,
       libraryAct: this.state.libraryAct===id ? fallback : this.state.libraryAct,
       setupInst: this.state.setupInst===id ? fallback : this.state.setupInst,
-      form: this.state.form.activity===id ? Object.assign({}, this.state.form, {activity:fallback, link:''}) : this.state.form};
+      form: this.state.form.activity===id ? Object.assign({}, this.state.form, {activity:fallback, projectIds:[], goalStepIds:[]}) : this.state.form};
     this.commitInstruments(instruments, extra);
   }
 
@@ -613,6 +623,10 @@ class Store {
     this.setState({newStep});
     this.commitGoals(this.state.goals.map(g=>g.id===goalId
       ? Object.assign({}, g, {steps: g.steps.concat([{id:goalId+'s'+Date.now(), label:text, d:'todo'}])}) : g));
+  }
+  renameGoalStep(goalId, stepId, label){
+    this.commitGoals(this.state.goals.map(g=>g.id===goalId
+      ? Object.assign({}, g, {steps: g.steps.map(s=>s.id===stepId ? Object.assign({}, s, {label}) : s)}) : g));
   }
   removeGoalStep(goalId, stepId){
     this.commitGoals(this.state.goals.map(g=>g.id===goalId
@@ -654,11 +668,11 @@ class Store {
       id, name, blurb:(f.blurb||'').trim(), goalId:f.goalId||'',
       area: goal ? goal.area : 'Music',
       activities: f.activities.length ? f.activities.slice() : ['other'],
-      until: f.until||'', steps, user:true,
+      until: f.until||'', sprint: !!f.sprint, steps, user:true,
     };
     this.commitProjects(this.state.projects.concat([project]), {
       activeProjectId: id,
-      projectForm: {open:false, name:'', blurb:'', goalId:'', activities:[], steps:'', until:''},
+      projectForm: {open:false, name:'', blurb:'', goalId:'', activities:[], steps:'', until:'', sprint:false},
     });
   }
   patchProject(id, patch){
@@ -675,6 +689,10 @@ class Store {
     if(!text) return;
     this.commitProjects(this.state.projects.map(p=>p.id===projectId
       ? Object.assign({}, p, {steps: p.steps.concat([{id:projectId+'s'+Date.now(), label:text, d:'todo'}])}) : p));
+  }
+  renameProjectStep(projectId, stepId, label){
+    this.commitProjects(this.state.projects.map(p=>p.id===projectId
+      ? Object.assign({}, p, {steps: p.steps.map(s=>s.id===stepId ? Object.assign({}, s, {label}) : s)}) : p));
   }
   removeProjectStep(projectId, stepId){
     this.commitProjects(this.state.projects.map(p=>p.id===projectId
@@ -862,8 +880,9 @@ class Store {
       : {fill:'none', stroke, strokeWidth:1.5, dasharray:'62 12'};
   }
   jumpToLog(actId, projectId){
-    const link = projectId ? 'p:'+projectId : '';
-    this.setState({tab:'log', form: Object.assign({}, this.state.form, {activity: actId, link, date: toKey(new Date())})});
+    this.setState({tab:'log', form: Object.assign({}, blankForm(actId), {
+      projectIds: projectId ? [projectId] : [],
+    })});
   }
 
   effectiveRotation(){
@@ -982,18 +1001,24 @@ class Store {
   submitSession(){
     const f = this.state.form;
     if(!f.activity || !f.minutes || Number(f.minutes)<=0) return;
-    let projectId = '', goalId = '';
-    if(f.link.indexOf('p:')===0){
-      projectId = f.link.slice(2);
-      const p = PROJECTS.find(x=>x.id===projectId);
-      goalId = p ? p.goalId : '';
-    } else if(f.link.indexOf('g:')===0){ goalId = f.link.slice(2); }
+    const projectIds = (f.projectIds||[]).slice();
+    const goalStepIds = (f.goalStepIds||[]).slice();
+    // projectId/goalId stay as the single "headline" link so older readers
+    // (session card tag, CSV export, goal rollups) keep working.
+    const projectId = projectIds[0] || '';
+    const headProject = PROJECTS.find(x=>x.id===projectId);
+    let goalId = headProject ? headProject.goalId : '';
+    if(!goalId && goalStepIds.length){
+      const owner = GOALS.find(g=>(g.steps||[]).some(s=>s.id===goalStepIds[0]));
+      if(owner) goalId = owner.id;
+    }
     const day = f.date || toKey(new Date());
     const isShaku = f.activity==='shaku';
     const usedLicks = isShaku ? (f.licks||[]) : [];
     const session = {
-      id: 'log-'+Date.now(), date: day, activity: f.activity,
-      minutes: Number(f.minutes), whatWorked: f.whatWorked||'', whereStuck: f.whereStuck||'', projectId, goalId,
+      id: 'log-'+Date.now(), date: day, time: f.time||'', activity: f.activity,
+      minutes: Number(f.minutes), whatWorked: f.whatWorked||'', whereStuck: f.whereStuck||'',
+      projectId, goalId, projectIds, goalStepIds,
       steps: isShaku ? (f.steps||[]) : [], licks: usedLicks,
     };
     const sessions = [session].concat(this.state.sessions);
@@ -1002,8 +1027,16 @@ class Store {
       const plays = l.plays||[];
       return Object.assign({}, l, {plays: plays.indexOf(day)>=0 ? plays : plays.concat([day])});
     });
-    this.setState({sessions, licks, form: {date: toKey(new Date()), activity: f.activity, minutes:'', whatWorked:'', whereStuck:'', link:'', steps:[], licks:[]}});
+    this.setState({sessions, licks, form: blankForm(f.activity)});
     this.persist({sessions, licks});
+  }
+
+  // step id -> which goal/project owns it, for rendering "worked on" entries.
+  stepOwnerIndex(){
+    const idx = {};
+    GOALS.forEach(g => (g.steps||[]).forEach(s => { idx[s.id] = {label:s.label, parent:g.name, kind:'Goal', activities:g.activities||[]}; }));
+    (this.state.projects||[]).forEach(p => (p.steps||[]).forEach(s => { idx[s.id] = {label:s.label, parent:p.name, kind:'Project', activities:p.activities||[]}; }));
+    return idx;
   }
   download(name, text, type){
     const url = URL.createObjectURL(new Blob([text], {type}));
@@ -1160,6 +1193,9 @@ class Store {
       progressLabel: projProg.label+' done',
       goalName: (GOALS.find(g=>g.id===proj.goalId)||{}).name || '',
       untilLabel: daysLeft(proj.until),
+      sprint: !!proj.sprint,
+      sprintLabel: proj.sprint ? 'In sprint — on every day' : 'Sprint mode off',
+      toggleSprint: ()=>this.patchProject(proj.id, {sprint: !proj.sprint}),
       openSteps: proj.steps.filter(s=>this.stepStatusOf(s)!=='done').slice(0,3).map(s=>this.stepView(s)),
       logIt: ()=>this.jumpToLog(proj.activities[0], proj.id),
       remove: ()=>this.removeProject(proj.id),
@@ -1187,8 +1223,10 @@ class Store {
       setGoal: e=>this.setProjectForm({goalId:e.target.value}),
       setSteps: e=>this.setProjectForm({steps:e.target.value}),
       setUntil: e=>this.setProjectForm({until:e.target.value}),
+      sprint: !!pf.sprint,
+      toggleSprint: ()=>this.setProjectForm({sprint: !pf.sprint}),
       openIt: ()=>this.setProjectForm({open:true}),
-      cancel: ()=>this.setProjectForm({open:false, name:'', blurb:'', goalId:'', activities:[], steps:'', until:''}),
+      cancel: ()=>this.setProjectForm({open:false, name:'', blurb:'', goalId:'', activities:[], steps:'', until:'', sprint:false}),
       submit: ()=>this.addProject(),
     };
 
@@ -1227,6 +1265,36 @@ class Store {
     const act = state.form.activity;
     const linkProjects = PROJECTS.filter(p=>p.activities.indexOf(act)>=0).map(p=>({value:'p:'+p.id, name:p.name}));
     const linkGoals = GOALS.filter(g=>!g.archived && g.activities.indexOf(act)>=0).map(g=>({value:'g:'+g.id, name:g.name}));
+
+    /* --- what was worked on: several projects and several goal steps --- */
+    const pickedProjects = state.form.projectIds||[];
+    const pickedSteps = state.form.goalStepIds||[];
+    const toggleIn = (list, id) => list.indexOf(id)>=0 ? list.filter(x=>x!==id) : list.concat([id]);
+    // Anything already ticked stays visible even after switching activity, so a
+    // selection can't silently vanish from the form.
+    const projectPicks = PROJECTS.filter(p=>p.activities.indexOf(act)>=0 || pickedProjects.indexOf(p.id)>=0).map(p=>{
+      const on = pickedProjects.indexOf(p.id)>=0;
+      const stroke = actOf((p.activities||[])[0]).stroke;
+      return {id:p.id, name:p.name, on,
+        toggle: ()=>this.setState({form: Object.assign({}, state.form, {projectIds: toggleIn(pickedProjects, p.id)})}),
+        border: on ? stroke : 'var(--color-divider)',
+        bg: on ? 'color-mix(in srgb, '+stroke+' 10%, transparent)' : 'transparent',
+        color: on ? stroke : muted};
+    });
+    const stepPickGroups = GOALS.filter(g=>!g.archived && (g.activities.indexOf(act)>=0 || (g.steps||[]).some(s=>pickedSteps.indexOf(s.id)>=0)))
+      .map(g=>({
+        name: g.name,
+        stroke: actOf((g.activities||[])[0]).stroke,
+        steps: (g.steps||[]).map(s=>{
+          const on = pickedSteps.indexOf(s.id)>=0;
+          return {id:s.id, label:s.label, on,
+            toggle: ()=>this.setState({form: Object.assign({}, state.form, {goalStepIds: toggleIn(pickedSteps, s.id)})}),
+            mark: on ? 'var(--color-accent)' : 'color-mix(in srgb, var(--color-text) 30%, transparent)',
+            fill: on ? 'var(--color-accent)' : 'transparent',
+            color: on ? 'var(--color-text)' : MUTED};
+        }),
+      })).filter(g=>g.steps.length);
+    const workedCount = pickedProjects.length + pickedSteps.length;
     const actName = ACT_BY_ID[act] ? ACT_BY_ID[act].name : 'this';
     const linkHint = (linkProjects.length+linkGoals.length) ? 'what '+actName+' feeds' : 'nothing tied to '+actName+' yet';
     const shakuStroke = actOf(act).stroke;
@@ -1261,13 +1329,23 @@ class Store {
     });
     const lf = state.lickForm;
     const weekly = this.weeklyStats();
+    const ownerIdx = this.stepOwnerIndex();
     const visibleSessions = this.visibleSessionsData().map(s=>{
       const a = actOf(s.activity);
       const p = PROJECTS.find(x=>x.id===s.projectId);
       const g = GOALS.find(x=>x.id===s.goalId);
       return {
-        activityName:a.name, stroke:a.stroke, dateLabel:labelFor(s.date), minutes:s.minutes,
+        activityName:a.name, stroke:a.stroke,
+        dateLabel: labelFor(s.date) + (s.time ? ' · '+s.time : ''), minutes:s.minutes,
         linkName: p ? p.name : (g ? g.name : ''),
+        workedProjects: (s.projectIds||[]).map(id=>{
+          const pr = PROJECTS.find(x=>x.id===id);
+          return {name: pr ? pr.name : 'project', stroke: pr ? actOf((pr.activities||[])[0]).stroke : '#7d7979'};
+        }),
+        workedSteps: (s.goalStepIds||[]).map(id=>{
+          const o = ownerIdx[id];
+          return {label: o ? o.label : 'step', parent: o ? o.parent : ''};
+        }),
         whatWorked:s.whatWorked, whereStuck:s.whereStuck,
         quick: !!s.quick, fillIn: ()=>this.fillInQuick(s.id),
         routineLabel: (s.steps||[]).length ? (s.steps||[]).length+' of '+this.stepsFor(s.activity).length+' routine steps' : '',
@@ -1282,7 +1360,8 @@ class Store {
     return {
       form: state.form,
       setFormDate: e=>this.setState({form: Object.assign({}, state.form, {date:e.target.value})}),
-      setFormActivity: e=>this.setState({form: Object.assign({}, state.form, {activity:e.target.value, link:''})}),
+      setFormActivity: e=>this.setState({form: Object.assign({}, state.form, {activity:e.target.value})}),
+      setFormTime: e=>this.setState({form: Object.assign({}, state.form, {time:e.target.value})}),
       setFormMinutes: e=>this.setState({form: Object.assign({}, state.form, {minutes:e.target.value})}),
       isShakuLog, shakuPhases, stepCountLabel, lickChips,
       noLicks: state.licks.length===0,
@@ -1298,10 +1377,11 @@ class Store {
       addLickFromLibrary: ()=>this.addLick(false),
       setFormWorked: e=>this.setState({form: Object.assign({}, state.form, {whatWorked:e.target.value})}),
       setFormStuck: e=>this.setState({form: Object.assign({}, state.form, {whereStuck:e.target.value})}),
-      setFormLink: e=>this.setState({form: Object.assign({}, state.form, {link:e.target.value})}),
       submitSession: ()=>this.submitSession(),
       activityOptions: this.activityOptions(),
       linkProjects, linkGoals, linkHint,
+      projectPicks, stepPickGroups, workedCount,
+      workedLabel: workedCount ? workedCount+' marked' : 'nothing marked yet',
       weekly, sort: state.sort, setSort: e=>this.setState({sort:e.target.value}),
       filterActivity: state.filterActivity, setFilter: e=>this.setState({filterActivity:e.target.value}),
       hasNoEntries: visibleSessions.length===0, visibleSessions,
@@ -1375,12 +1455,18 @@ class Store {
                   cursor: tappable ? 'pointer' : 'default',
                   toggle: tappable ? (()=>this.toggleQuickLog(dk, b.actId, b.mins)) : (()=>{})};
         }),
-        tasks: this.tasksOn(dk).map(t=>{
-          const a = actOf(t.act);
-          const done = this.isTaskDone(t.id, dk);
-          return {name:t.name, stroke:a.stroke, title:t.name+' · '+a.name,
-                  opacity: done ? 0.4 : 1, decoration: done ? 'line-through' : 'none',
-                  toggle: ()=>this.toggleTask(t.id, dk)};
+        // The strips carry project work, not the generic daily habits — a
+        // project lands on its due date, or on every day while it is in sprint.
+        tasks: (state.projects||[]).filter(p => p.sprint || (p.until && p.until===dk)).map(p=>{
+          const a = actOf((p.activities||[])[0]);
+          const due = p.until===dk;
+          const pr = this.progressOf(p);
+          const done = pr.total>0 && pr.done===pr.total;
+          return {name: (due ? '▲ ' : '') + p.name + ' ' + pr.label,
+                  stroke: a.stroke,
+                  title: p.name+' · '+(due ? 'due today' : 'in sprint')+' · '+pr.label+' done',
+                  opacity: done ? 0.45 : 1, decoration: done ? 'line-through' : 'none',
+                  toggle: ()=>this.setState({tab:'today', mode:'project', activeProjectId:p.id})};
         }),
       };
     });
@@ -1674,6 +1760,28 @@ class Store {
     };
     inst.noAccomplishments = inst.accomplishments.length===0;
 
+    // Everything ticked under "Worked on" while logging, newest first. Unlike
+    // accomplishments (a step *finished*), this is a record of attention:
+    // the same step can appear on many dates.
+    inst.workedLog = (()=>{
+      const idx = this.stepOwnerIndex();
+      const out = [];
+      mine.forEach(sess=>{
+        const when = labelFor(sess.date) + (sess.time ? ' · '+sess.time : '');
+        (sess.projectIds||[]).forEach(pid=>{
+          const pr = (state.projects||[]).find(x=>x.id===pid);
+          if(pr) out.push({label: pr.name, parent: 'Project', date: when, sortKey: sess.date+(sess.time||'')});
+        });
+        (sess.goalStepIds||[]).forEach(sid=>{
+          const o = idx[sid];
+          if(o) out.push({label: o.label, parent: o.parent, date: when, sortKey: sess.date+(sess.time||'')});
+        });
+      });
+      out.sort((a,b)=> a.sortKey<b.sortKey?1:a.sortKey>b.sortKey?-1:0);
+      return out.slice(0, 60);
+    })();
+    inst.noWorkedLog = inst.workedLog.length===0;
+
     const secOpen = k => state.libOpen[k]===undefined ? true : !!state.libOpen[k];
     const mkSec = (k, count) => ({open: secOpen(k), count: String(count),
       chevron: secOpen(k) ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -1738,6 +1846,7 @@ class Store {
     inst.secLicks = mkSec('licks', inst.licks.length);
     inst.secStuck = mkSec('stuck', inst.stuckNotes.length);
     inst.secDone = mkSec('done', inst.accomplishments.length);
+    inst.secWorked = mkSec('worked', inst.workedLog.length);
     inst.secChart = mkSec('chart', 8);
 
     const lq = state.libQuery.trim().toLowerCase();
@@ -1855,7 +1964,9 @@ class Store {
         rename: e=>this.patchGoal(g.id, {name:e.target.value}),
         setArea: e=>this.patchGoal(g.id, {area:e.target.value}),
         remove: ()=>this.removeGoal(g.id),
-        steps: g.steps.map(s=>({label:s.label, statusLabel:this.stepStatusOf(s), remove:()=>this.removeGoalStep(g.id, s.id)})),
+        steps: g.steps.map(s=>({label:s.label, statusLabel:this.stepStatusOf(s),
+          rename: e=>this.renameGoalStep(g.id, s.id, e.target.value),
+          remove:()=>this.removeGoalStep(g.id, s.id)})),
         noSteps: g.steps.length===0,
         actChips: state.instruments.map(a=>{
           const on = (g.activities||[]).indexOf(a.id)>=0;
@@ -1903,6 +2014,46 @@ class Store {
       cancelReset: ()=>this.setState({resetArmed:false}),
       doReset: ()=>this.resetSetup(),
       areaOptions: AREAS,
+      setupProjects: state.projects.map(p=>{
+        const pr = this.progressOf(p);
+        const open = !!state.goalOpen[p.id];
+        return {name:p.name, progressLabel:pr.label, open, until:p.until||'',
+          chevron: open ? 'rotate(180deg)' : 'rotate(0deg)',
+          stroke: actOf((p.activities||[])[0]).stroke,
+          goalName: (GOALS.find(x=>x.id===p.goalId)||{}).name || 'Not tied to a goal',
+          instLabel: (p.activities||[]).map(a=>actOf(a).name).join(' · '),
+          toggle: ()=>{ const o=Object.assign({},state.goalOpen); o[p.id]=!open; this.setState({goalOpen:o}); },
+          rename: e=>this.patchProject(p.id, {name:e.target.value}),
+          setBlurb: e=>this.patchProject(p.id, {blurb:e.target.value}),
+          setUntil: e=>this.patchProject(p.id, {until:e.target.value}),
+          sprint: !!p.sprint,
+          sprintLabel: p.sprint ? 'In sprint — shows every day' : 'Sprint mode off',
+          toggleSprint: ()=>this.patchProject(p.id, {sprint: !p.sprint}),
+          setGoal: e=>this.patchProject(p.id, {goalId:e.target.value}),
+          blurb: p.blurb||'',
+          goalOptions: GOALS.filter(x=>!x.archived).map(x=>({value:x.id, name:x.name})),
+          remove: ()=>this.removeProject(p.id),
+          noSteps: (p.steps||[]).length===0,
+          steps: (p.steps||[]).map(st=>({label:st.label, statusLabel:this.stepStatusOf(st),
+            rename: e=>this.renameProjectStep(p.id, st.id, e.target.value),
+            remove: ()=>this.removeProjectStep(p.id, st.id)})),
+          actChips: state.instruments.map(a=>{
+            const on = (p.activities||[]).indexOf(a.id)>=0;
+            const c = colorFor(a);
+            return {name:a.name, toggle:()=>{
+                const cur = p.activities||[];
+                const next = on ? cur.filter(x=>x!==a.id) : cur.concat([a.id]);
+                this.patchProject(p.id, {activities: next.length ? next : ['other']});
+              },
+              border: on ? c.stroke : 'var(--color-divider)',
+              bg: on ? 'color-mix(in srgb, '+c.stroke+' 10%, transparent)' : 'transparent',
+              color: on ? c.stroke : muted};
+          }),
+          newStep: state.newStep[p.id]||'',
+          setNewStep: e=>{ const o=Object.assign({},state.newStep); o[p.id]=e.target.value; this.setState({newStep:o}); },
+          addStep: ()=>{ this.addProjectStep(p.id, state.newStep[p.id]||''); const o=Object.assign({},state.newStep); delete o[p.id]; this.setState({newStep:o}); }};
+      }),
+      secProjects: mkSetupSec('projects', state.projects.length),
       backupMsg: state.backupMsg,
       exportBackup: ()=>this.exportBackup(),
       importBackup: file=>this.importBackup(file),
