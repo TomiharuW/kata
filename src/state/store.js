@@ -1769,7 +1769,9 @@ class Store {
     const allSteps = GOALS.concat(PROJECTS).reduce((a,x)=>a.concat(x.steps),[]);
     const stepsDone = allSteps.filter(s=>this.stepStatusOf(s)==='done').length;
     const overallStats = [
-      {value: (totalMins/60).toFixed(0)+' h', label:'Logged all time'},
+      // One decimal, matching the per-instrument figures — rounding to whole
+      // hours reported a 30-minute session as "1 h".
+      {value: (totalMins/60).toFixed(1)+' h', label:'Logged all time'},
       {value: String(state.sessions.length), label:'Sessions'},
       {value: stepsDone+'/'+allSteps.length, label:'Steps completed'},
     ];
