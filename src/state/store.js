@@ -122,12 +122,14 @@ class Store {
       openProjects: {},
       coverageBasis: 'week',
       area: 'All',
+      goalProjectFilter: 'all',
       libraryAct: 'shaku',
       licks: seedLicks(),
       lickForm: {open:false, name:'', source:'Honkyoku', notation:'', note:''},
       openCue: {},
       form: blankForm('piano'),
       backupMsg: '',
+      logMsg: '', logMsgOk: false,
     };
     this.listeners = new Set();
   }
@@ -137,6 +139,16 @@ class Store {
   setState(patch){
     this.state = Object.assign({}, this.state, patch);
     this.listeners.forEach(fn => fn(this.state));
+  }
+  // Update state WITHOUT re-rendering. Text fields must use this: the screen is
+  // rebuilt wholesale on every notify, so committing a keystroke would destroy
+  // the button you are about to tap — a tap needs press and release on the same
+  // element, so the click was being swallowed and logging did nothing.
+  setStateQuiet(patch){
+    this.state = Object.assign({}, this.state, patch);
+  }
+  setFormQuiet(patch){
+    this.setStateQuiet({form: Object.assign({}, this.state.form, patch)});
   }
 
   // Installs made before the fresh-slate change carry the old demo dataset in
@@ -831,8 +843,24 @@ class Store {
     const st = this.stepStatusOf(step);
     const sty = STEP_STYLE[st];
     const at = st==='done' ? this.stepDoneAt(step) : '';
+    const t = this.stepTickStats()[step.id];
     return {label: step.label, fill: sty.fill, stroke: sty.stroke, dash: sty.dash, color: sty.color,
-            doneLabel: at ? ' · done '+labelFor(at) : '', cycle: ()=>this.cycleStep(step)};
+            doneLabel: at ? ' · done '+labelFor(at) : '',
+            tickCount: t ? t.count : 0,
+            tickLabel: t ? '×'+t.count : '',
+            tickTitle: t ? t.count+(t.count===1?' session':' sessions')+' · '+t.minutes+' min · last '+labelFor(t.last) : 'not worked on yet',
+            isDone: st==='done',
+            markDone: ()=>this.setStepStatus(step, 'done'),
+            cycle: ()=>this.cycleStep(step)};
+  }
+  // Direct set (the tap-cycle goes todo -> progress -> done; this jumps straight
+  // there so "finish this and show me the next one" is one tap).
+  setStepStatus(step, next){
+    const stepStatus = Object.assign({}, this.state.stepStatus, {[step.id]: next});
+    const stepDates = Object.assign({}, this.state.stepDates);
+    if(next==='done') stepDates[step.id] = toKey(new Date()); else delete stepDates[step.id];
+    this.setState({stepStatus, stepDates});
+    this.persist({stepStatus, stepDates});
   }
   progressOf(item){
     const done = item.steps.filter(s=>this.stepStatusOf(s)==='done').length;
@@ -1000,7 +1028,10 @@ class Store {
   }
   submitSession(){
     const f = this.state.form;
-    if(!f.activity || !f.minutes || Number(f.minutes)<=0) return;
+    if(!f.activity || !f.minutes || Number(f.minutes)<=0){
+      this.setState({logMsg: 'Add how many minutes you practised, then log it.', logMsgOk: false});
+      return;
+    }
     const projectIds = (f.projectIds||[]).slice();
     const goalStepIds = (f.goalStepIds||[]).slice();
     // projectId/goalId stay as the single "headline" link so older readers
@@ -1027,8 +1058,28 @@ class Store {
       const plays = l.plays||[];
       return Object.assign({}, l, {plays: plays.indexOf(day)>=0 ? plays : plays.concat([day])});
     });
-    this.setState({sessions, licks, form: blankForm(f.activity)});
+    const marked = projectIds.length + goalStepIds.length;
+    this.setState({sessions, licks, form: blankForm(f.activity),
+      logMsg: 'Logged — '+session.minutes+' min of '+actOf(f.activity).name
+              + (marked ? ', '+marked+' marked' : '') + '.', logMsgOk: true});
     this.persist({sessions, licks});
+  }
+
+  // How many sessions have ticked each step, and the most recent date. This is
+  // the long-term signal: a step you keep returning to is where the work is.
+  stepTickStats(){
+    if(this._tickCache && this._tickCacheFor === this.state.sessions) return this._tickCache;
+    const out = {};
+    this.state.sessions.forEach(sess=>{
+      (sess.goalStepIds||[]).forEach(id=>{
+        const e = out[id] || (out[id] = {count:0, last:'', minutes:0});
+        e.count++;
+        e.minutes += Number(sess.minutes)||0;
+        if(sess.date > e.last) e.last = sess.date;
+      });
+    });
+    this._tickCache = out; this._tickCacheFor = this.state.sessions;
+    return out;
   }
 
   // step id -> which goal/project owns it, for rendering "worked on" entries.
@@ -1359,10 +1410,10 @@ class Store {
 
     return {
       form: state.form,
-      setFormDate: e=>this.setState({form: Object.assign({}, state.form, {date:e.target.value})}),
+      setFormDate: e=>this.setFormQuiet({date:e.target.value}),
       setFormActivity: e=>this.setState({form: Object.assign({}, state.form, {activity:e.target.value})}),
-      setFormTime: e=>this.setState({form: Object.assign({}, state.form, {time:e.target.value})}),
-      setFormMinutes: e=>this.setState({form: Object.assign({}, state.form, {minutes:e.target.value})}),
+      setFormTime: e=>this.setFormQuiet({time:e.target.value}),
+      setFormMinutes: e=>this.setFormQuiet({minutes:e.target.value}),
       isShakuLog, shakuPhases, stepCountLabel, lickChips,
       noLicks: state.licks.length===0,
       lickFormOpen: lf.open,
@@ -1375,9 +1426,11 @@ class Store {
       setLickNote: e=>this.setLickForm({note:e.target.value}),
       addLickFromLog: ()=>this.addLick(true),
       addLickFromLibrary: ()=>this.addLick(false),
-      setFormWorked: e=>this.setState({form: Object.assign({}, state.form, {whatWorked:e.target.value})}),
-      setFormStuck: e=>this.setState({form: Object.assign({}, state.form, {whereStuck:e.target.value})}),
+      setFormWorked: e=>this.setFormQuiet({whatWorked:e.target.value}),
+      setFormStuck: e=>this.setFormQuiet({whereStuck:e.target.value}),
       submitSession: ()=>this.submitSession(),
+      logMsg: state.logMsg, logMsgOk: state.logMsgOk,
+      clearLogMsg: ()=>this.setState({logMsg:'', logMsgOk:false}),
       activityOptions: this.activityOptions(),
       linkProjects, linkGoals, linkHint,
       projectPicks, stepPickGroups, workedCount,
@@ -1569,6 +1622,14 @@ class Store {
         rollup: this.rollupFor(s=>s.projectId===p.id),
       };
     });
+    const projectChipRow = [{id:'all', name:'All goals'}].concat((state.projects||[]).map(p=>({id:p.id, name:p.name})))
+      .map(o=>{
+        const on = (state.goalProjectFilter||'all')===o.id;
+        return {name:o.name, select: ()=>this.setState({goalProjectFilter:o.id}),
+          border: on ? 'var(--color-accent)' : 'var(--color-divider)',
+          bg: on ? 'var(--color-accent-100)' : 'transparent',
+          color: on ? 'var(--color-accent-800)' : MUTED};
+      });
     const MUSIC_SUB = ['piano','shaku','shino','trumpet','taiko','comp','ear'];
     const goalRows = [];
     const rowBase = {isHeader:false, isGoal:false, title:'', name:'', area:'', progressLabel:'', doneLabel:'', stroke:'#7d7979', steps:[], rollup:'', canArchive:false, archive:()=>{}, archivedLabel:'', restore:()=>{}};
@@ -1584,9 +1645,24 @@ class Store {
         steps: g.steps.map(s=>this.stepView(s)),
         rollup: this.rollupFor(s=>s.goalId===g.id),
         studyLabel: studyByGoal[g.id] ? studyByGoal[g.id]+' in the study list' : '',
+        projects: (state.projects||[]).filter(p=>p.goalId===g.id).map(p=>({
+          name:p.name, stroke: actOf((p.activities||[])[0]).stroke,
+          open: ()=>this.setState({tab:'today', mode:'project', activeProjectId:p.id}),
+        })),
+        nextUp: (()=>{
+          const nxt = g.steps.find(st=>this.stepStatusOf(st)!=='done');
+          if(!nxt) return null;
+          const v = this.stepView(nxt);
+          return {label: nxt.label, tickLabel: v.tickLabel, tickTitle: v.tickTitle,
+                  markDone: ()=>this.setStepStatus(nxt, 'done')};
+        })(),
       }));
     };
-    const filteredGoals = GOALS.filter(g=>inArea(g) && !g.archived);
+    const projFilter = state.goalProjectFilter || 'all';
+    const projFilterGoalIds = projFilter==='all' ? null
+      : new Set((state.projects||[]).filter(p=>p.id===projFilter).map(p=>p.goalId).filter(Boolean));
+    const inProjFilter = g => !projFilterGoalIds || projFilterGoalIds.has(g.id);
+    const filteredGoals = GOALS.filter(g=>inArea(g) && !g.archived && inProjFilter(g));
     const musicGoals = filteredGoals.filter(g=>g.area==='Music');
     MUSIC_SUB.forEach(actId=>{
       const grp = musicGoals.filter(g=>g.activities[0]===actId);
@@ -1644,7 +1720,7 @@ class Store {
     });
 
     return {
-      areaChips, projectCards, goalRows,
+      areaChips, projectChipRow, projectCards, goalRows,
       archivedRows, archivedSec, hasArchived: archived.length>0,
       goalForm: gf, goalFormOpen: gf.open, goalFormClosed: !gf.open, goalActChips,
       areaOptions: AREAS,

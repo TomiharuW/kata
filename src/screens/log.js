@@ -180,24 +180,32 @@ export function render(state, store){
   const formChildren = [
     h('div', {class:'card-kicker'}, 'New entry'),
     h('div', {style:'display:flex;gap:10px;margin:10px 0'}, [
-      h('div', {class:'field', style:'flex:1;min-width:0'}, [h('label', {}, 'Date'), h('input', {class:'input', type:'date', value:f.date, onChange:l.setFormDate})]),
-      h('div', {class:'field', style:'flex:none;width:112px'}, [h('label', {}, 'Time'), h('input', {class:'input', type:'time', value:f.time, onChange:l.setFormTime})]),
+      h('div', {class:'field', style:'flex:1;min-width:0'}, [h('label', {}, 'Date'), h('input', {class:'input', type:'date', value:f.date, onInput:l.setFormDate})]),
+      h('div', {class:'field', style:'flex:none;width:112px'}, [h('label', {}, 'Time'), h('input', {class:'input', type:'time', value:f.time, onInput:l.setFormTime})]),
     ]),
     h('div', {style:'display:flex;gap:10px;margin-bottom:10px'}, [
       h('div', {class:'field', style:'flex:1;min-width:0'}, [
         h('label', {}, 'Activity'),
         h('select', {class:'input', value:f.activity, onChange:l.setFormActivity}, l.activityOptions.map(a => h('option', {value:a.id}, a.name))),
       ]),
-      h('div', {class:'field', style:'flex:none;width:112px'}, [h('label', {}, 'Minutes'), h('input', {class:'input', type:'number', min:1, placeholder:'30', value:f.minutes, onChange:l.setFormMinutes})]),
+      h('div', {class:'field', style:'flex:none;width:112px'}, [h('label', {}, 'Minutes'), h('input', {class:'input', type:'number', min:1, placeholder:'30', value:f.minutes, onInput:l.setFormMinutes})]),
     ]),
     workedOnPanel(l),
   ];
   if(l.isShakuLog) formChildren.push(routinePanel(l));
   formChildren.push(
-    h('div', {class:'field', style:'margin-bottom:10px'}, [h('label', {}, 'What worked'), h('textarea', {class:'input', rows:2, placeholder:'What went well today', value:f.whatWorked, onChange:l.setFormWorked})]),
-    h('div', {class:'field', style:'margin-bottom:12px'}, [h('label', {}, 'Where I got stuck'), h('textarea', {class:'input', rows:2, placeholder:'Where to restart tomorrow', value:f.whereStuck, onChange:l.setFormStuck})]),
+    h('div', {class:'field', style:'margin-bottom:10px'}, [h('label', {}, 'What worked'), h('textarea', {class:'input', rows:2, placeholder:'What went well today', value:f.whatWorked, onInput:l.setFormWorked})]),
+    h('div', {class:'field', style:'margin-bottom:12px'}, [h('label', {}, 'Where I got stuck'), h('textarea', {class:'input', rows:2, placeholder:'Where to restart tomorrow', value:f.whereStuck, onInput:l.setFormStuck})]),
     h('button', {class:'btn btn-primary btn-block', onClick:l.submitSession}, 'Log session'),
   );
+  if(l.logMsg){
+    formChildren.push(h('div', {style:`display:flex;align-items:flex-start;gap:8px;margin-top:10px;padding:10px 12px;border-left:2px solid ${l.logMsgOk?'var(--color-accent)':'var(--color-divider)'};background:${l.logMsgOk?'var(--color-accent-100)':'transparent'};font-size:12.5px;line-height:1.5;color:${l.logMsgOk?'var(--color-accent-800)':'var(--color-text)'}`}, [
+      h('span', {style:'flex:1;min-width:0'}, l.logMsg),
+      h('button', {onClick:l.clearLogMsg, class:'btn btn-icon btn-ghost', 'aria-label':'Dismiss', style:'flex:none;width:22px;height:22px'}, [
+        h('svg', {width:12, height:12, viewBox:'0 0 24 24', fill:'none', stroke:'currentColor', 'stroke-width':2, 'stroke-linecap':'round'}, [h('path', {d:'M6 6l12 12M18 6 6 18'})]),
+      ]),
+    ]));
+  }
 
   const children = [
     h('h1', {style:'font-size:26px;margin:10px 0 16px'}, 'Practice Log'),

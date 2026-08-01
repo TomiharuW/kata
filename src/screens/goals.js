@@ -14,6 +14,7 @@ function stepRow(s){
   return h('button', {onClick:s.cycle, style:`display:flex;align-items:flex-start;gap:9px;width:100%;background:none;border:none;padding:8px 0;text-align:left;cursor:pointer;font-family:var(--font-body);font-size:13.5px;line-height:1.45;color:${s.color}`}, [
     h('svg', {width:15, height:15, viewBox:'0 0 16 16', style:'flex:none;margin-top:2px'}, [h('circle', {cx:8, cy:8, r:6, fill:s.fill, stroke:s.stroke, 'stroke-width':1.4, 'stroke-dasharray':s.dash})]),
     h('span', {style:'flex:1;min-width:0'}, [s.label, h('span', {style:'font-size:11px;color:color-mix(in srgb, var(--color-text) 42%, transparent);font-variant-numeric:tabular-nums'}, s.doneLabel)]),
+    s.tickCount ? h('span', {title:s.tickTitle, style:'flex:none;font-size:10.5px;font-variant-numeric:tabular-nums;color:var(--color-accent-700);border:1px solid var(--color-accent);border-radius:999px;padding:1px 7px;margin-top:1px'}, s.tickLabel) : null,
   ]);
 }
 
@@ -58,6 +59,23 @@ function goalRow(g){
     kids.push(h('div', {style:'display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:8px'}, [
       h('span', {class:'tag tag-accent', style:'font-size:10.5px'}, g.doneLabel),
       g.canArchive ? h('button', {onClick:g.archive, style:'background:none;border:1px solid var(--color-accent);color:var(--color-accent-700);border-radius:4px;padding:5px 10px;font-family:var(--font-body);font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:5px'}, [archiveIcon(), 'Archive']) : null,
+    ]));
+  }
+  if(g.projects && g.projects.length){
+    kids.push(h('div', {style:'display:flex;gap:5px;flex-wrap:wrap;margin-top:8px'}, g.projects.map(p =>
+      h('button', {onClick:p.open, style:`font-size:10.5px;padding:3px 9px;border-radius:999px;border:1px solid ${p.stroke};background:transparent;color:${p.stroke};white-space:nowrap;cursor:pointer;font-family:var(--font-body)`}, p.name)
+    )));
+  }
+  if(g.nextUp){
+    kids.push(h('div', {style:'display:flex;align-items:center;gap:9px;margin-top:10px;padding:9px 11px;border:1px solid var(--color-accent);border-radius:var(--radius-md);background:var(--color-accent-100)'}, [
+      h('div', {style:'flex:1;min-width:0'}, [
+        h('div', {style:'font-size:9.5px;letter-spacing:0.09em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:2px'}, 'Next up'),
+        h('div', {style:'font-size:12.5px;line-height:1.4;color:var(--color-accent-800)'}, [
+          g.nextUp.label,
+          g.nextUp.tickLabel ? h('span', {title:g.nextUp.tickTitle, style:'font-variant-numeric:tabular-nums;opacity:0.75'}, ' · '+g.nextUp.tickLabel) : null,
+        ]),
+      ]),
+      h('button', {onClick:g.nextUp.markDone, style:'flex:none;background:none;border:1px solid var(--color-accent);color:var(--color-accent-800);border-radius:4px;padding:6px 10px;font-family:var(--font-body);font-size:11px;cursor:pointer;white-space:nowrap'}, 'Done · next'),
     ]));
   }
   kids.push(h('div', {style:'margin-top:11px;padding-top:9px;border-top:1px solid var(--color-divider)'}, g.steps.map(stepRow)));
@@ -118,6 +136,11 @@ export function render(state, store){
       ]),
     ]));
   }
+
+  children.push(h('div', {style:'font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 48%, transparent);margin-bottom:6px'}, 'Filter goals by project'));
+  children.push(h('div', {style:'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px'}, g.projectChipRow.map(c =>
+    h('button', {onClick:c.select, style:`padding:6px 11px;border-radius:999px;border:1px solid ${c.border};background:${c.bg};color:${c.color};font-family:var(--font-body);font-size:11.5px;cursor:pointer;white-space:nowrap`}, c.name)
+  )));
 
   children.push(h('div', {style:'font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:10px'}, 'Projects · time-boxed pushes'));
   if(g.projectCards.length){
