@@ -293,7 +293,7 @@ export function render(state, store){
     ]),
     h('div', {style:'flex:1;min-width:0'}, [
       h('div', {style:`font-size:14px;line-height:1.35;color:${tk.textColor};text-decoration:${tk.textDecoration}`}, tk.name),
-      h('div', {style:'font-size:11px;color:color-mix(in srgb, var(--color-text) 48%, transparent);margin-top:2px'}, `${tk.actName} · ${tk.whenLabel}`),
+      h('div', {style:'font-size:11px;color:color-mix(in srgb, var(--color-text) 48%, transparent);margin-top:2px'}, (tk.parentName ? tk.parentName+' · ' : '') + tk.whenLabel),
     ]),
     h('span', {style:`width:7px;height:7px;border-radius:999px;border:2px solid ${tk.stroke};flex:none`}),
   ])));
@@ -308,8 +308,11 @@ export function render(state, store){
       ]),
       h('div', {style:'display:flex;gap:10px;margin-bottom:10px'}, [
         h('div', {class:'field', style:'flex:1'}, [
-          h('label', {}, 'Files under'),
-          h('select', {class:'input', value:tf.act, onChange:t.setTaskAct}, t.activityOptions.map(a => h('option', {value:a.id}, a.name))),
+          h('label', {}, 'What it serves'),
+          h('select', {class:'input', value:tf.link, onChange:t.setTaskLink}, [
+            h('option', {value:''}, 'Pick a goal or project…'),
+            ...t.taskLinkOptions.map(o => h('option', {value:o.value}, o.name)),
+          ]),
         ]),
         h('div', {class:'field', style:'flex:1'}, [
           h('label', {}, 'When'),
@@ -349,6 +352,14 @@ export function render(state, store){
     children.push(h('div', {class:'card elev-sm', style:'margin-top:14px'}, formChildren));
   } else {
     children.push(h('button', {class:'btn btn-secondary btn-block', onClick:t.openTaskForm, style:'margin-top:12px;font-size:12.5px'}, 'Add a repeating task'));
+  }
+  if(t.taskMsg){
+    children.push(h('div', {style:'display:flex;align-items:flex-start;gap:8px;margin-top:9px;padding:9px 11px;border-left:2px solid var(--color-divider);font-size:12px;line-height:1.5'}, [
+      h('span', {style:'flex:1;min-width:0'}, t.taskMsg),
+      h('button', {onClick:t.clearTaskMsg, class:'btn btn-icon btn-ghost', 'aria-label':'Dismiss', style:'flex:none;width:22px;height:22px'}, [
+        h('svg', {width:12, height:12, viewBox:'0 0 24 24', fill:'none', stroke:'currentColor', 'stroke-width':2, 'stroke-linecap':'round'}, [h('path', {d:'M6 6l12 12M18 6 6 18'})]),
+      ]),
+    ]));
   }
 
   children.push(h('button', {class:'btn btn-primary btn-block', onClick:t.goToLog, style:'margin-top:22px;font-size:15px;padding:12px'}, 'Log a session'));

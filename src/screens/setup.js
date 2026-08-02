@@ -138,6 +138,49 @@ export function render(state, store){
     children.push(h('button', {onClick:s.newGoalFromSetup, style:'background:none;border:none;padding:8px 0 0;font-family:var(--font-body);font-size:11.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, '＋ new goal'));
   }
 
+  // Repeating tasks — created here now, and every one serves a goal or project.
+  children.push(sectionHeader('Repeating tasks', s.secTasks));
+  if(s.secTasks.open){
+    children.push(h('div', {style:'font-size:12.5px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:10px'}, 'The small things you tick off on Today. Each one serves a goal or a project — that is what files it under an instrument.'));
+    if(!s.setupTasks.length){
+      children.push(h('div', {style:'font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 48%, transparent)'}, 'No repeating tasks. Add one from Today, under Today’s tasks.'));
+    }
+    children.push(...s.setupTasks.map(t => h('div', {style:'padding:11px 0;border-bottom:1px solid var(--color-divider)'}, [
+      h('div', {style:'display:flex;align-items:center;gap:10px'}, [
+        h('span', {style:`width:9px;height:9px;border-radius:999px;border:2px solid ${t.stroke};flex:none`}),
+        h('input', {class:'input', style:'flex:1;min-width:0;font-size:13.5px;padding:7px 9px', value:t.name, onChange:t.rename}),
+        h('button', {onClick:t.remove, class:'btn btn-icon btn-ghost', 'aria-label':'Remove task', style:'flex:none'}, [trashIcon()]),
+      ]),
+      h('div', {style:'padding-left:19px;margin-top:8px'}, [
+        h('div', {class:'field', style:'margin-bottom:9px'}, [
+          h('label', {}, 'Serves'),
+          h('select', {class:'input', style:'font-size:12.5px', value:t.link, onChange:t.setLink}, [
+            h('option', {value:''}, 'Pick a goal or project…'),
+            ...s.taskLinkOptions.map(o => h('option', {value:o.value}, o.name)),
+          ]),
+        ]),
+        h('div', {class:'field', style:'margin-bottom:9px'}, [
+          h('label', {}, 'When'),
+          h('select', {class:'input', style:'font-size:12.5px', value:t.mode, onChange:t.setMode}, [
+            h('option', {value:'daily'}, 'Every day'),
+            h('option', {value:'weekdays'}, 'Certain days'),
+            h('option', {value:'date'}, 'One date'),
+            h('option', {value:'range'}, 'A date range'),
+          ]),
+        ]),
+        t.mode === 'weekdays' ? h('div', {style:'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px'}, t.dayChips.map(d =>
+          h('button', {onClick:d.toggle, style:`padding:6px 10px;border-radius:4px;border:1px solid ${d.border};background:${d.bg};color:${d.color};font-family:var(--font-body);font-size:11.5px;cursor:pointer`}, d.name)
+        )) : null,
+        t.mode === 'date' ? h('div', {class:'field', style:'margin-bottom:9px'}, [h('label', {}, 'Date'), h('input', {class:'input', type:'date', value:t.date, onChange:t.setDate})]) : null,
+        t.mode === 'range' ? h('div', {style:'display:flex;gap:9px;margin-bottom:9px'}, [
+          h('div', {class:'field', style:'flex:1'}, [h('label', {}, 'From'), h('input', {class:'input', type:'date', value:t.from, onChange:t.setFrom})]),
+          h('div', {class:'field', style:'flex:1'}, [h('label', {}, 'To'), h('input', {class:'input', type:'date', value:t.to, onChange:t.setTo})]),
+        ]) : null,
+        h('div', {style:'font-size:10.5px;line-height:1.4;color:color-mix(in srgb, var(--color-text) 45%, transparent)'}, `${t.parentName} · ${t.actName} · ${t.whenLabel}`),
+      ]),
+    ])));
+  }
+
   // Projects — same editing shape as goals, plus the time-box date and the
   // goal each one feeds.
   children.push(sectionHeader('Projects', s.secProjects));

@@ -271,14 +271,11 @@ export function seedLicks(){
   ];
 }
 
-export const DEFAULT_TASKS = [
-  {id:'t1', name:'Long tones — five minutes before anything else', act:'shaku', mode:'daily'},
-  {id:'t2', name:'Ten minutes of kanji by hand', act:'jpn', mode:'daily'},
-  {id:'t3', name:'Metronome subdivisions at 60', act:'trumpet', mode:'weekdays', days:['mon','wed','fri']},
-  {id:'t4', name:'Rehearsal folder and running order', act:'trumpet', mode:'weekdays', days:['sat']},
-  {id:'t5', name:'Mobility and breathing', act:'strength', mode:'weekdays', days:['tue','thu','sat']},
-  {id:'t6', name:'Kata review, slow', act:'taiko', mode:'weekdays', days:['sun']},
-];
+// Every repeating task now belongs to a goal or a project — a task that only
+// named an instrument was a habit checklist wired to nothing, so the seeded
+// instrument-only ones are gone. Create tasks from Setup, against the thing
+// they actually serve.
+export const DEFAULT_TASKS = [];
 
 export let GOALS = [
   {id:'g1', area:'Music', name:'Idiomatic improvisation on jazz trumpet', activities:['trumpet','ear','piano'], steps:[

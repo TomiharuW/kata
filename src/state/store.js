@@ -59,7 +59,7 @@ const BACKUP_FIELDS = [
   'instruments', 'goals', 'projects', 'routineSteps',
   // Migration marker — must persist, or purgeLegacySeed() would re-run on every
   // load and keep resetting progress on the seeded goals.
-  '_seedPurged', '_quickConverted',
+  '_seedPurged', '_quickConverted', '_tasksLinked',
 ];
 
 class Store {
@@ -69,6 +69,7 @@ class Store {
       _schemaVersion: 1,
       _seedPurged: false,
       _quickConverted: false,
+      _tasksLinked: false,
       tab: 'today',
       mode: 'default',
       projects: clone(SEED_PROJECTS),
@@ -83,7 +84,7 @@ class Store {
       goalForm: {open:false, name:'', area:'Music', activities:[], steps:''},
       tasks: DEFAULT_TASKS,
       taskDone: {},
-      taskForm: {open:false, name:'', act:'shaku', mode:'daily', days:[], date:'', from:'', to:''},
+      taskForm: {open:false, name:'', link:'', mode:'daily', days:[], date:'', from:'', to:''},
       extraToday: {},
       jpStudied: {},
       settingsOpen: false,
@@ -131,6 +132,7 @@ class Store {
       form: blankForm('piano'),
       backupMsg: '',
       logMsg: '', logMsgOk: false,
+      taskMsg: '',
     };
     this.listeners = new Set();
   }
@@ -222,6 +224,13 @@ class Store {
           });
           if(converted) try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }catch(e){}
         }
+        // Repeating tasks must serve a goal or a project. Instrument-only ones
+        // were a parallel habit list wired to nothing — drop them.
+        if(!s._tasksLinked){
+          const kept = (s.tasks||[]).filter(t=>t.projectId || t.goalId);
+          s = Object.assign({}, s, {tasks: kept, _tasksLinked: true});
+          try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }catch(e){}
+        }
         if(!s._seedPurged){
           const {patch} = this.purgeLegacySeed(s);
           s = Object.assign({}, s, patch, {_seedPurged: true});
@@ -237,7 +246,7 @@ class Store {
         applyProjects(projects);
         this.setState({
           instruments, goals, projects,
-          _seedPurged: true, _quickConverted: true,
+          _seedPurged: true, _quickConverted: true, _tasksLinked: true,
           routineSteps: (s.routineSteps && s.routineSteps.length) ? s.routineSteps : seedRoutineSteps(),
           sessions: s.sessions||[], checklist: s.checklist||{}, mode: s.mode||'default',
           activeProjectId: s.activeProjectId || (projects[0] && projects[0].id) || '', stepStatus: s.stepStatus||{},
@@ -305,7 +314,8 @@ class Store {
         stepStatus: s.stepStatus || this.state.stepStatus,
         stepDates: s.stepDates || this.state.stepDates,
         userGoals: s.userGoals || this.state.userGoals,
-        tasks: (s.tasks && s.tasks.length) ? s.tasks : this.state.tasks,
+        // The same rule as the migration: a task must serve a goal or project.
+        tasks: (s.tasks && s.tasks.length) ? s.tasks.filter(t=>t.projectId || t.goalId) : this.state.tasks,
         taskDone: s.taskDone || this.state.taskDone,
         extraToday: s.extraToday || this.state.extraToday,
         jpStudied: s.jpStudied || this.state.jpStudied,
@@ -763,13 +773,52 @@ class Store {
     this.setState({taskDone});
     this.persist({taskDone});
   }
+  // A task must serve a goal or a project. `act` is derived from that parent so
+  // the task still files under an instrument in the Library.
   addTask(){
     const f = this.state.taskForm;
     const name = (f.name||'').trim();
-    if(!name) return;
-    const t = {id:'ut-'+Date.now(), name, act:f.act, mode:f.mode, days:f.days.slice(), date:f.date, from:f.from, to:f.to};
+    if(!name){ this.setState({taskMsg:'Give the task a name.'}); return; }
+    const link = f.link||'';
+    if(!link){ this.setState({taskMsg:'Pick the goal or project this task serves.'}); return; }
+    const parent = this.taskParentOf(link);
+    if(!parent){ this.setState({taskMsg:'That goal or project no longer exists.'}); return; }
+    const t = {id:'ut-'+Date.now(), name, act: parent.act,
+      projectId: link.indexOf('p:')===0 ? link.slice(2) : '',
+      goalId: link.indexOf('g:')===0 ? link.slice(2) : '',
+      mode:f.mode, days:f.days.slice(), date:f.date, from:f.from, to:f.to};
     const tasks = this.state.tasks.concat([t]);
-    this.setState({tasks, taskForm:{open:false, name:'', act:f.act, mode:f.mode, days:[], date:'', from:'', to:''}});
+    this.setState({tasks, taskMsg:'', taskForm:{open:false, name:'', link, mode:f.mode, days:[], date:'', from:'', to:''}});
+    this.persist({tasks});
+  }
+  // Resolve 'g:<id>' / 'p:<id>' to its owner, plus the instrument it files under.
+  taskParentOf(link){
+    if(!link) return null;
+    if(link.indexOf('p:')===0){
+      const p = (this.state.projects||[]).find(x=>x.id===link.slice(2));
+      return p ? {name:p.name, kind:'Project', act:(p.activities||[])[0]||'other'} : null;
+    }
+    if(link.indexOf('g:')===0){
+      const g = GOALS.find(x=>x.id===link.slice(2));
+      return g ? {name:g.name, kind:'Goal', act:(g.activities||[])[0]||'other'} : null;
+    }
+    return null;
+  }
+  taskLinkOf(t){ return t.projectId ? 'p:'+t.projectId : (t.goalId ? 'g:'+t.goalId : ''); }
+  patchTask(id, patch){
+    const tasks = this.state.tasks.map(t=>{
+      if(t.id!==id) return t;
+      const next = Object.assign({}, t, patch);
+      if(patch.link !== undefined){
+        const parent = this.taskParentOf(patch.link);
+        next.projectId = patch.link.indexOf('p:')===0 ? patch.link.slice(2) : '';
+        next.goalId = patch.link.indexOf('g:')===0 ? patch.link.slice(2) : '';
+        if(parent) next.act = parent.act;
+        delete next.link;
+      }
+      return next;
+    });
+    this.setState({tasks});
     this.persist({tasks});
   }
   removeTask(id){
@@ -1199,7 +1248,9 @@ class Store {
     const todayTasks = this.tasksOn(todayKey).map(t=>{
       const a = ACT_BY_ID[t.act] || {name:t.act, stroke:'#7d7979'};
       const done = this.isTaskDone(t.id, todayKey);
+      const parent = this.taskParentOf(this.taskLinkOf(t));
       return {name:t.name, actName:a.name, stroke:a.stroke, done,
+        parentName: parent ? parent.name : '', parentKind: parent ? parent.kind : '',
         whenLabel: this.taskWhenLabel(t),
         boxFill: done ? a.stroke : 'transparent', boxStroke: done ? a.stroke : 'color-mix(in srgb, var(--color-text) 30%, transparent)',
         tickOpacity: done ? 1 : 0,
@@ -1318,7 +1369,15 @@ class Store {
       openTaskForm: ()=>this.setTaskForm({open:true}),
       cancelTask: ()=>this.setTaskForm({open:false, name:''}),
       setTaskName: e=>this.setTaskForm({name:e.target.value}),
-      setTaskAct: e=>this.setTaskForm({act:e.target.value}),
+      setTaskLink: e=>this.setTaskForm({link:e.target.value}),
+      taskLinkOptions: (()=>{
+        const out = [];
+        (state.projects||[]).forEach(p=>out.push({value:'p:'+p.id, name:'▸ '+p.name}));
+        GOALS.filter(g=>!g.archived).forEach(g=>out.push({value:'g:'+g.id, name:'◦ '+g.name}));
+        return out;
+      })(),
+      taskMsg: state.taskMsg,
+      clearTaskMsg: ()=>this.setState({taskMsg:''}),
       setTaskMode: e=>this.setTaskForm({mode:e.target.value}),
       setTaskDate: e=>this.setTaskForm({date:e.target.value}),
       setTaskFrom: e=>this.setTaskForm({from:e.target.value}),
@@ -2156,6 +2215,36 @@ class Store {
           addStep: ()=>{ this.addProjectStep(p.id, state.newStep[p.id]||''); const o=Object.assign({},state.newStep); delete o[p.id]; this.setState({newStep:o}); }};
       }),
       secProjects: mkSetupSec('projects', state.projects.length),
+      setupTasks: state.tasks.map(t=>{
+        const parent = this.taskParentOf(this.taskLinkOf(t));
+        const a = actOf(t.act);
+        return {name:t.name, stroke:a.stroke, actName:a.name,
+          parentName: parent ? parent.name : 'Orphaned — pick something',
+          whenLabel: this.taskWhenLabel(t),
+          link: this.taskLinkOf(t),
+          mode: t.mode, days: t.days||[], date:t.date||'', from:t.from||'', to:t.to||'',
+          rename: e=>this.patchTask(t.id, {name:e.target.value}),
+          setLink: e=>this.patchTask(t.id, {link:e.target.value}),
+          setMode: e=>this.patchTask(t.id, {mode:e.target.value}),
+          setDate: e=>this.patchTask(t.id, {date:e.target.value}),
+          setFrom: e=>this.patchTask(t.id, {from:e.target.value}),
+          setTo: e=>this.patchTask(t.id, {to:e.target.value}),
+          dayChips: DAYS.map(d=>{
+            const on = (t.days||[]).indexOf(d.id)>=0;
+            return {name:d.name, toggle:()=>this.patchTask(t.id, {days: on ? (t.days||[]).filter(x=>x!==d.id) : (t.days||[]).concat([d.id])}),
+              border: on ? 'var(--color-accent)' : 'var(--color-divider)',
+              bg: on ? 'var(--color-accent-100)' : 'transparent',
+              color: on ? 'var(--color-accent-800)' : muted};
+          }),
+          remove: ()=>this.removeTask(t.id)};
+      }),
+      secTasks: mkSetupSec('tasks', state.tasks.length),
+      taskLinkOptions: (()=>{
+        const out = [];
+        (state.projects||[]).forEach(p=>out.push({value:'p:'+p.id, name:'▸ '+p.name}));
+        GOALS.filter(g=>!g.archived).forEach(g=>out.push({value:'g:'+g.id, name:'◦ '+g.name}));
+        return out;
+      })(),
       backupMsg: state.backupMsg,
       exportBackup: ()=>this.exportBackup(),
       importBackup: file=>this.importBackup(file),

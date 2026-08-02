@@ -119,15 +119,7 @@ export function render(state, store){
       ]),
       h('div', {style:'margin-top:14px;padding-top:12px;border-top:1px solid var(--color-divider)'}, [
         h('div', {style:'font-size:10.5px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 50%, transparent);margin-bottom:8px'}, 'Repeating tasks'),
-        ...r.allTasks.map(t => h('div', {style:'display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-divider)'}, [
-          h('span', {style:`width:7px;height:7px;border-radius:999px;border:2px solid ${t.stroke};flex:none`}),
-          h('div', {style:'flex:1;min-width:0'}, [
-            h('div', {style:'font-size:13px;line-height:1.35'}, t.name),
-            h('div', {style:'font-size:11px;color:color-mix(in srgb, var(--color-text) 48%, transparent);margin-top:2px'}, `${t.actName} · ${t.whenLabel}`),
-          ]),
-          h('button', {onClick:t.remove, class:'btn btn-icon btn-ghost', 'aria-label':'Delete task', style:'flex:none'}, [trashIcon()]),
-        ])),
-        h('div', {style:'font-size:11.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 48%, transparent);margin-top:10px'}, 'Add new tasks from Today.'),
+        h('div', {style:'font-size:11.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 48%, transparent)'}, 'Repeating tasks live in Setup now, where each one can be renamed, rescheduled, and pointed at the goal or project it serves.'),
       ]),
     ]));
   }
