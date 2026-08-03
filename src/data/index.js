@@ -345,6 +345,13 @@ export const DEFAULT_ROTATION = {
   mon:['piano','comp'], tue:['shaku','trumpet'], wed:['trumpet','piano'],
   thu:['shino','comp'], fri:['shaku','taiko'], sat:['comp'], sun:['piano'],
 };
+// Lessons you take — fixed weekly appointments with a teacher, distinct from
+// the rotation because the time is not yours to move.
+export const DEFAULT_LESSONS = [
+  {id:'ls-kevin',  name:'Kevin — shakuhachi', act:'shaku',   day:'thu', time:'09:30', mins:60},
+  {id:'ls-malone', name:'Mike Malone — jazz', act:'trumpet', day:'thu', time:'11:00', mins:60},
+];
+
 export const DEFAULT_BLOCKS = {ear:15, a:45, b:45, jpn:30, cardio:35, strength:25};
 export const DEFAULT_STRENGTH_DAYS = ['tue','fri'];
 

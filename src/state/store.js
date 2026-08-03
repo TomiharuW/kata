@@ -17,7 +17,7 @@ import {
   SHAKU_PHASES, SHAKU_ROUTINE, seedRoutineSteps, LICK_SOURCES, seedLicks,
   DEFAULT_TASKS, GOALS, SEED_GOALS, applyGoals,
   PROJECTS, SEED_PROJECTS, applyProjects, SEED_DONE_DATES,
-  DAYS, DEFAULT_ROTATION, DEFAULT_BLOCKS, DEFAULT_STRENGTH_DAYS,
+  DAYS, DEFAULT_ROTATION, DEFAULT_BLOCKS, DEFAULT_STRENGTH_DAYS, DEFAULT_LESSONS,
   toKey, labelFor, mondayOf,
   STEP_STYLE, NEXT_STATUS,
 } from '../data/index.js';
@@ -118,7 +118,7 @@ class Store {
       libOpen: {},
       goalSort: 'default',
       tick: 0,
-      routine: {variant:'current', rotation: DEFAULT_ROTATION, blocks: DEFAULT_BLOCKS, strengthDays: DEFAULT_STRENGTH_DAYS, rotationSize: 2, slotsByDay: {sat:1, sun:1}},
+      routine: {variant:'current', rotation: DEFAULT_ROTATION, blocks: DEFAULT_BLOCKS, strengthDays: DEFAULT_STRENGTH_DAYS, rotationSize: 2, slotsByDay: {sat:1, sun:1}, lessons: clone(DEFAULT_LESSONS)},
       sort: 'newest',
       filterActivity: 'all',
       stuckOpen: {},
@@ -864,6 +864,33 @@ class Store {
     return 'https://calendar.google.com/calendar/embed?' + p.join('&');
   }
 
+  lessonsOn(dayId){ return (this.state.routine.lessons||[]).filter(l=>l.day===dayId); }
+  commitLessons(lessons){
+    const routine = Object.assign({}, this.state.routine, {lessons});
+    this.setState({routine});
+    this.persist({routine});
+  }
+  addLesson(){
+    const lessons = (this.state.routine.lessons||[]).concat([
+      {id:'ls-'+Date.now(), name:'New lesson', act:(ROTATION_POOL[0]||'other'), day:'thu', time:'09:00', mins:60},
+    ]);
+    this.commitLessons(lessons);
+  }
+  patchLesson(id, patch){
+    this.commitLessons((this.state.routine.lessons||[]).map(l=>l.id===id ? Object.assign({}, l, patch) : l));
+  }
+  removeLesson(id){
+    this.commitLessons((this.state.routine.lessons||[]).filter(l=>l.id!==id));
+  }
+  // '09:30' -> '9:30am', for the day list
+  clockLabel(t){
+    const m = /^(\d{1,2}):(\d{2})$/.exec(t||'');
+    if(!m) return t||'';
+    let hr = Number(m[1]); const suffix = hr < 12 ? 'am' : 'pm';
+    if(hr === 0) hr = 12; else if(hr > 12) hr -= 12;
+    return hr + ':' + m[2] + suffix;
+  }
+
   /* ---- rotation sizing ---- */
   slotsFor(dayId){
     const r = this.state.routine;
@@ -1580,6 +1607,9 @@ class Store {
         list.push({actId:entry.act, label:(entry.moved?'‹ ':'')+a.name+' '+(i===0?blocks.a:blocks.b)+'m',
                    editable:true, cycle:()=>this.cycleSlot(entry.srcDay||d.id, entry.srcSlot==null?i:entry.srcSlot, entry.act)});
       });
+      this.lessonsOn(d.id).forEach(l=>list.push({
+        actId:l.act, label:'◉ '+l.name+' '+this.clockLabel(l.time), editable:false, lesson:true,
+      }));
       list.push({actId:'jpn', label:'Japanese '+blocks.jpn+'m', editable:false});
       list.push({actId:'other', label:'Bike + immersion '+blocks.cardio+'m', editable:false});
       if((state.routine.strengthDays||[]).indexOf(d.id)>=0) list.push({actId:'strength', label:'Strength '+blocks.strength+'m', editable:false});
@@ -1603,6 +1633,9 @@ class Store {
       const items = [];
       items.push({actId:'ear', label:'Ear', mins:blocks.ear, firm:false});
       (rot[d.id]||[]).forEach((e,i)=>items.push({actId:e.act, label:(e.moved?'‹':'')+abbrOf(e.act), mins:(i===0?blocks.a:blocks.b), firm:true}));
+      this.lessonsOn(d.id).forEach(l=>items.push({
+        actId:l.act, label:abbrOf(l.act)+'◉', mins:l.mins, firm:true, lesson:true, lessonName:l.name,
+      }));
       items.push({actId:'jpn', label:'JP', mins:blocks.jpn, firm:false});
       items.push({actId:'other', label:'Bike', mins:blocks.cardio, firm:false});
       if((state.routine.strengthDays||[]).indexOf(d.id)>=0) items.push({actId:'strength', label:'Str', mins:blocks.strength, firm:false});
@@ -1622,7 +1655,7 @@ class Store {
           const done = this.isDoneOn(dk, b.actId);
           const detailed = !!sess;
           return {label:b.label, mins:String(b.mins), stroke:a.stroke, done,
-                  title: a.name+' · '+b.mins+' min planned · ' + (detailed ? sess.minutes+' min logged' : done ? 'ticked — tap to clear' : (tappable ? 'tap to mark done' : 'later this week')),
+                  title: (b.lesson ? b.lessonName+' · ' : '') + a.name+' · '+b.mins+' min planned · ' + (detailed ? sess.minutes+' min logged' : done ? 'ticked — tap to clear' : (tappable ? 'tap to mark done' : 'later this week')),
                   bg: done ? 'color-mix(in srgb, '+a.stroke+' 26%, transparent)'
                            : (b.firm ? 'color-mix(in srgb, '+a.stroke+' 10%, transparent)' : 'transparent'),
                   borderStyle: done ? 'solid' : (b.firm ? 'solid' : 'dashed'),
@@ -1695,6 +1728,21 @@ class Store {
       setCalendarView: v=>{ this.setState({calendarView:v}); this.persist({calendarView:v}); },
       calOpen: state.libOpen.cal===undefined ? true : !!state.libOpen.cal,
       toggleCal: ()=>{ const o=Object.assign({},state.libOpen); o.cal = !(state.libOpen.cal===undefined ? true : !!state.libOpen.cal); this.setState({libOpen:o}); },
+      lessons: (state.routine.lessons||[]).map(l=>({
+        name:l.name, act:l.act, day:l.day, time:l.time, mins:String(l.mins||60),
+        stroke: actOf(l.act).stroke,
+        dayName: (DAYS.find(d=>d.id===l.day)||{}).name || l.day,
+        whenLabel: 'Every '+((DAYS.find(d=>d.id===l.day)||{}).name||l.day)+' at '+this.clockLabel(l.time)+' · '+(l.mins||60)+' min',
+        setName: e=>this.patchLesson(l.id, {name:e.target.value}),
+        setAct: e=>this.patchLesson(l.id, {act:e.target.value}),
+        setDay: e=>this.patchLesson(l.id, {day:e.target.value}),
+        setTime: e=>this.patchLesson(l.id, {time:e.target.value}),
+        setMins: e=>this.patchLesson(l.id, {mins:Number(e.target.value)||60}),
+        remove: ()=>this.removeLesson(l.id),
+      })),
+      dayOptions: DAYS.map(d=>({value:d.id, name:d.name})),
+      activityOptions: this.activityOptions(),
+      addLesson: ()=>this.addLesson(),
       weekGrid, gridLegend, allTasks,
       isViewList: state.routineView==='list', isViewGrid: state.routineView==='grid',
       setViewList: ()=>this.setState({routineView:'list'}),

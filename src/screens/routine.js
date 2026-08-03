@@ -147,6 +147,32 @@ export function render(state, store){
     ]));
   }
 
+  // Lessons — fixed appointments with a teacher. Unlike the rotation these
+  // times are not yours to move, so the week is built around them.
+  children.push(h('div', {style:'display:flex;align-items:baseline;gap:8px;margin:24px 0 8px'}, [
+    h('div', {style:'font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)'}, 'Lessons 稽古'),
+    h('button', {onClick:r.addLesson, style:'margin-left:auto;background:none;border:none;padding:2px 0;font-family:var(--font-body);font-size:11.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, '＋ new lesson'),
+  ]));
+  if(!r.lessons.length){
+    children.push(h('div', {style:'font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 48%, transparent);margin-bottom:10px'}, 'No lessons set. These are the times someone else is teaching you — the week gets planned around them.'));
+  }
+  children.push(...r.lessons.map(l => h('div', {style:'padding:11px 0;border-bottom:1px solid var(--color-divider)'}, [
+    h('div', {style:'display:flex;align-items:center;gap:10px'}, [
+      h('span', {style:`width:9px;height:9px;border-radius:999px;border:2px solid ${l.stroke};flex:none`}),
+      h('input', {class:'input', style:'flex:1;min-width:0;font-size:13px;padding:6px 9px', value:l.name, onChange:l.setName}),
+      h('button', {onClick:l.remove, class:'btn btn-icon btn-ghost', 'aria-label':'Remove lesson', style:'flex:none;width:28px;height:28px'}, [trashIcon()]),
+    ]),
+    h('div', {style:'display:flex;gap:7px;margin-top:7px;padding-left:19px;flex-wrap:wrap'}, [
+      h('select', {class:'input', style:'flex:1;min-width:104px;font-size:12px;padding:5px 7px', value:l.act, onChange:l.setAct},
+        r.activityOptions.map(a => h('option', {value:a.id}, a.name))),
+      h('select', {class:'input', style:'flex:none;width:76px;font-size:12px;padding:5px 7px', value:l.day, onChange:l.setDay},
+        r.dayOptions.map(d => h('option', {value:d.value}, d.name))),
+      h('input', {class:'input', type:'time', style:'flex:none;width:96px;font-size:12px;padding:5px 7px', value:l.time, onChange:l.setTime}),
+      h('input', {class:'input', type:'number', min:5, step:5, style:'flex:none;width:62px;font-size:12px;padding:5px 7px', value:l.mins, onInput:l.setMins}),
+    ]),
+    h('div', {style:'font-size:10.5px;line-height:1.4;color:color-mix(in srgb, var(--color-text) 45%, transparent);margin:5px 0 0 19px'}, l.whenLabel),
+  ])));
+
   children.push(h('div', {style:'display:flex;align-items:baseline;gap:10px;margin:24px 0 10px'}, [
     h('div', {style:'font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)'}, 'Coverage'),
     h('div', {style:'margin-left:auto;display:flex;gap:14px'}, [
