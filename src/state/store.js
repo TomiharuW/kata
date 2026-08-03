@@ -94,7 +94,7 @@ class Store {
       routineSteps: seedRoutineSteps(),
       setupOpen: {inst:true, routines:false, goals:false},
       setupInst: 'shaku',
-      instForm: {open:false, name:'', hue:75, rotate:true},
+      instForm: {open:false, name:'', jp:'', jpR:'', hue:75, rotate:true},
       stepForm: {open:false, phase:'Warm up', label:'', mins:'5', cues:''},
       goalOpen: {},
       newStep: {},
@@ -604,9 +604,10 @@ class Store {
     const f = this.state.instForm;
     const name = (f.name||'').trim();
     if(!name) return;
-    const a = {id:'in-'+Date.now(), name, abbr:name.replace(/[^A-Za-z0-9]/g,'').slice(0,3) || name.slice(0,2),
+    const a = {id:'in-'+Date.now(), name, jp:(f.jp||'').trim(), jpR:(f.jpR||'').trim(),
+      abbr:name.replace(/[^A-Za-z0-9]/g,'').slice(0,3) || name.slice(0,2),
       hue:Number(f.hue), rotate:!!f.rotate};
-    this.commitInstruments(this.state.instruments.concat([a]), {instForm:{open:false, name:'', hue:f.hue, rotate:true}});
+    this.commitInstruments(this.state.instruments.concat([a]), {instForm:{open:false, name:'', jp:'', jpR:'', hue:f.hue, rotate:true}});
   }
   canDeleteInstrument(a){ return !a.anchor && a.id!=='other'; }
   removeInstrument(id){
@@ -1868,7 +1869,7 @@ class Store {
       return {x: i*32+2, y: 52-h, h, fill: v ? 'color-mix(in srgb, '+la.stroke+' 16%, transparent)' : 'transparent', stroke: v ? la.stroke : 'var(--color-divider)'};
     });
     const inst = {
-      name: la.name, stroke: la.stroke,
+      name: la.name, jp: la.jp||'', jpR: la.jpR||'', stroke: la.stroke,
       kindLabel: la.anchor ? 'Daily anchor' : (ROTATION_POOL.indexOf(la.id)>=0 ? 'In the rotation' : 'Catch-all'),
       lastLabel: this.daysAgoLabel(lastDate),
       stats: [
@@ -2077,7 +2078,9 @@ class Store {
     };
     const setupInstruments = state.instruments.map(a=>{
       const c = colorFor(a);
-      return {name:a.name, stroke:c.stroke, usage:usageOf(a.id),
+      return {name:a.name, jp:a.jp||'', jpR:a.jpR||'', stroke:c.stroke, usage:usageOf(a.id),
+        setJp: e=>this.patchInstrument(a.id, {jp:e.target.value}),
+        setJpR: e=>this.patchInstrument(a.id, {jpR:e.target.value}),
         kindLabel: a.anchor ? 'Daily anchor' : (a.rotate ? 'In the rotation' : 'Off the rotation'),
         canRotate: !a.anchor, canDelete: this.canDeleteInstrument(a),
         rotateLabel: a.rotate ? 'In rotation' : 'Off rotation',
@@ -2155,6 +2158,8 @@ class Store {
       instForm: insF, instFormOpen: insF.open,
       openInstForm: ()=>this.setInstForm({open:!insF.open}),
       setInstName: e=>this.setInstForm({name:e.target.value}),
+      setInstJp: e=>this.setInstForm({jp:e.target.value}),
+      setInstJpR: e=>this.setInstForm({jpR:e.target.value}),
       toggleInstRotate: ()=>this.setInstForm({rotate: !insF.rotate}),
       instFormRotateLabel: insF.rotate ? 'Goes in the rotation' : 'Outside the rotation',
       instFormRotateBorder: insF.rotate ? 'var(--color-accent)' : 'var(--color-divider)',

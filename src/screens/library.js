@@ -58,7 +58,7 @@ export function render(state, store){
 
   const children = [
     h('h1', {style:'font-size:26px;margin:10px 0 6px'}, 'Library'),
-    h('div', {style:'font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:16px'}, 'Everything filed under one instrument: the hours it has taken, the goals riding on it, and what you have actually finished.'),
+    h('div', {style:'font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:16px'}, 'Everything filed under one way: the hours it has taken, the goals riding on it, and what you have actually finished.'),
     h('div', {class:'field', style:'margin-bottom:16px'}, [
       h('input', {class:'input', type:'search', placeholder:'Search 稽古, kanji, a goal, a note…', value:l.libQuery, onChange:l.setLibQuery}),
     ]),
@@ -81,7 +81,11 @@ export function render(state, store){
     h('button', {onClick:c.select, style:`padding:8px 12px;border-radius:999px;border:1px solid ${c.border};background:${c.bg};color:${c.color};font-family:var(--font-body);font-size:12px;cursor:pointer;white-space:nowrap`}, c.name)
   )));
 
-  children.push(h('h2', {style:`font-size:23px;margin:0 0 3px;color:${inst.stroke}`}, inst.name));
+  children.push(h('div', {style:'display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 3px'}, [
+    h('h2', {style:`font-size:23px;margin:0;color:${inst.stroke}`}, inst.name),
+    inst.jp ? h('span', {style:`font-family:var(--font-heading);font-size:20px;line-height:1;color:${inst.stroke};opacity:0.75`}, inst.jp) : null,
+    inst.jpR ? h('span', {style:'font-size:11px;color:color-mix(in srgb, var(--color-text) 45%, transparent)'}, inst.jpR) : null,
+  ]));
   children.push(h('div', {style:'font-size:11.5px;color:color-mix(in srgb, var(--color-text) 52%, transparent);margin-bottom:14px'}, `${inst.kindLabel} · ${inst.lastLabel}`));
 
   children.push(h('div', {style:'display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--color-divider);border:1px solid var(--color-divider);margin-bottom:18px'}, inst.stats.map(s =>

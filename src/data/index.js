@@ -3,17 +3,20 @@
 // Names are kept identical to the source so behavior stays traceable to spec.
 // Do not paraphrase or invent replacements for the quotations / seed content.
 
+// The Ways (道) — everything you practise, not just the instruments. Each
+// carries its Japanese name so the app reads bilingually; `jp` is the written
+// form, `jpR` its romaji.
 export const ACT_DEFS = [
-  {id:'ear', name:'Ear Training', abbr:'Ear', anchor:true},
-  {id:'piano', name:'Piano', abbr:'Pf', hue:75, rotate:true},
-  {id:'shaku', name:'Shakuhachi', abbr:'Shk', hue:150, rotate:true},
-  {id:'shino', name:'Shinobue', abbr:'Shn', hue:195, rotate:true},
-  {id:'trumpet', name:'Trumpet', abbr:'Tpt', hue:28, rotate:true},
-  {id:'taiko', name:'Taiko', abbr:'Tk', hue:345, rotate:true},
-  {id:'jpn', name:'Japanese Reading', abbr:'JP', anchor:true},
-  {id:'comp', name:'Composition', abbr:'Cmp', hue:258, rotate:true},
-  {id:'strength', name:'Strength', abbr:'Str', anchor:true},
-  {id:'other', name:'Other', abbr:'Bike', hue:null},
+  {id:'ear', name:'Ear Training', jp:'聴音', jpR:'chōon', abbr:'Ear', anchor:true},
+  {id:'piano', name:'Piano', jp:'ピアノ', jpR:'piano', abbr:'Pf', hue:75, rotate:true},
+  {id:'shaku', name:'Shakuhachi', jp:'尺八', jpR:'shakuhachi', abbr:'Shk', hue:150, rotate:true},
+  {id:'shino', name:'Shinobue', jp:'篠笛', jpR:'shinobue', abbr:'Shn', hue:195, rotate:true},
+  {id:'trumpet', name:'Trumpet', jp:'喇叭', jpR:'rappa', abbr:'Tpt', hue:28, rotate:true},
+  {id:'taiko', name:'Taiko', jp:'太鼓', jpR:'taiko', abbr:'Tk', hue:345, rotate:true},
+  {id:'jpn', name:'Japanese Reading', jp:'読解', jpR:'dokkai', abbr:'JP', anchor:true},
+  {id:'comp', name:'Composition', jp:'作曲', jpR:'sakkyoku', abbr:'Cmp', hue:258, rotate:true},
+  {id:'strength', name:'Strength', jp:'鍛錬', jpR:'tanren', abbr:'Str', anchor:true},
+  {id:'other', name:'Other', jp:'その他', jpR:'sonota', abbr:'Bike', hue:null},
 ];
 export const HUE_SWATCHES = [75, 150, 195, 28, 345, 258, 300, 120];
 
@@ -31,7 +34,7 @@ export function applyInstruments(list){
 }
 applyInstruments(ACT_DEFS);
 
-export const actOf = id => ACT_BY_ID[id] || {id, name:id||'Unfiled', abbr:String(id||'—').slice(0,3), stroke:'#7d7979'};
+export const actOf = id => ACT_BY_ID[id] || {id, name:id||'Unfiled', jp:'', jpR:'', abbr:String(id||'—').slice(0,3), stroke:'#7d7979'};
 export const abbrOf = id => { const a = actOf(id); return a.abbr || a.name.slice(0,3); };
 export const clone = x => JSON.parse(JSON.stringify(x));
 export const AREAS = ['Music','Brass band','Japanese','Health / strength','Other'];

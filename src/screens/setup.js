@@ -23,29 +23,37 @@ export function render(state, store){
 
   const children = [
     h('h1', {style:'font-size:26px;margin:10px 0 6px'}, 'Setup'),
-    h('div', {style:'font-size:12.5px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 55%, transparent)'}, 'Instruments, the routines hanging off them, and the goals they feed. Anything changed here changes everywhere — the rotation, the log, the library.'),
+    h('div', {style:'font-size:12.5px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 55%, transparent)'}, 'The ways you practise, the routines hanging off them, and the goals they feed. Anything changed here changes everywhere — the rotation, the log, the library.'),
   ];
 
   // Instruments
-  children.push(sectionHeader('Instruments', s.secInstruments));
+  children.push(sectionHeader('Ways 道 — what you practise', s.secInstruments));
   if(s.secInstruments.open){
     children.push(...s.setupInstruments.map(a => h('div', {style:'padding:11px 0;border-bottom:1px solid var(--color-divider)'}, [
       h('div', {style:'display:flex;align-items:center;gap:10px'}, [
         h('span', {style:`width:9px;height:9px;border-radius:999px;border:2px solid ${a.stroke};flex:none`}),
         h('input', {class:'input', style:'flex:1;min-width:0;font-size:13.5px;padding:7px 9px', value:a.name, onChange:a.rename}),
-        a.canDelete ? h('button', {onClick:a.remove, class:'btn btn-icon btn-ghost', 'aria-label':'Remove instrument', style:'flex:none'}, [trashIcon()]) : null,
+        a.canDelete ? h('button', {onClick:a.remove, class:'btn btn-icon btn-ghost', 'aria-label':'Remove this way', style:'flex:none'}, [trashIcon()]) : null,
+      ]),
+      h('div', {style:'display:flex;gap:8px;margin-top:7px;padding-left:19px'}, [
+        h('input', {class:'input', style:'flex:none;width:96px;font-family:var(--font-heading);font-size:15px;padding:5px 8px', placeholder:'日本語', value:a.jp, onChange:a.setJp}),
+        h('input', {class:'input', style:'flex:1;min-width:0;font-size:12px;padding:5px 8px', placeholder:'romaji', value:a.jpR, onChange:a.setJpR}),
       ]),
       h('div', {style:'display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:7px;padding-left:19px'}, [
         a.canRotate ? h('button', {onClick:a.toggleRotate, style:`flex:none;padding:5px 10px;border-radius:999px;border:1px solid ${a.rotateBorder};background:${a.rotateBg};color:${a.rotateColor};font-family:var(--font-body);font-size:11px;cursor:pointer;white-space:nowrap`}, a.rotateLabel) : null,
         h('span', {style:'font-size:10.5px;line-height:1.4;color:color-mix(in srgb, var(--color-text) 45%, transparent)'}, a.usage),
       ]),
     ])));
-    children.push(h('div', {style:'font-size:11px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 45%, transparent);margin-top:9px'}, 'The three daily anchors and the catch-all stay put — everything else can go. Removing an instrument pulls it out of the rotation, its routine, and the goals that named it. Logged sessions are kept.'));
-    children.push(h('button', {onClick:s.openInstForm, style:'background:none;border:none;padding:8px 0 0;font-family:var(--font-body);font-size:11.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, '＋ new instrument'));
+    children.push(h('div', {style:'font-size:11px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 45%, transparent);margin-top:9px'}, 'Instruments, the language, the body — anything you practise is a Way. The three daily anchors and the catch-all stay put; everything else can go. Removing one pulls it out of the rotation, its routine, and the goals that named it. Logged sessions are kept.'));
+    children.push(h('button', {onClick:s.openInstForm, style:'background:none;border:none;padding:8px 0 0;font-family:var(--font-body);font-size:11.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, '＋ new way'));
     if(s.instFormOpen){
       const f = s.instForm;
       children.push(h('div', {style:'margin-top:9px;padding:13px;border:1px solid var(--color-divider);border-radius:var(--radius-sm)'}, [
-        h('div', {class:'field', style:'margin-bottom:11px'}, [h('label', {}, 'Name'), h('input', {class:'input', placeholder:'e.g. Koto', value:f.name, onChange:s.setInstName})]),
+        h('div', {class:'field', style:'margin-bottom:9px'}, [h('label', {}, 'Name'), h('input', {class:'input', placeholder:'e.g. Koto', value:f.name, onChange:s.setInstName})]),
+        h('div', {style:'display:flex;gap:9px;margin-bottom:11px'}, [
+          h('div', {class:'field', style:'flex:none;width:110px'}, [h('label', {}, 'Japanese'), h('input', {class:'input', style:'font-family:var(--font-heading);font-size:15px', placeholder:'箏', value:f.jp, onChange:s.setInstJp})]),
+          h('div', {class:'field', style:'flex:1;min-width:0'}, [h('label', {}, 'Romaji'), h('input', {class:'input', placeholder:'koto', value:f.jpR, onChange:s.setInstJpR})]),
+        ]),
         h('div', {style:'font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:7px'}, 'Colour'),
         h('div', {style:'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px'}, s.hueSwatches.map(hw =>
           h('button', {onClick:hw.select, 'aria-label':'Choose colour', style:`width:28px;height:28px;border-radius:999px;border:1.5px solid ${hw.ring};background:none;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center`}, [
@@ -53,7 +61,7 @@ export function render(state, store){
           ])
         )),
         h('button', {onClick:s.toggleInstRotate, style:`padding:7px 12px;border-radius:999px;border:1px solid ${s.instFormRotateBorder};background:${s.instFormRotateBg};color:${s.instFormRotateColor};font-family:var(--font-body);font-size:11.5px;cursor:pointer`}, s.instFormRotateLabel),
-        h('button', {class:'btn btn-primary btn-block', onClick:s.addInstrument, style:'margin-top:13px'}, 'Add instrument'),
+        h('button', {class:'btn btn-primary btn-block', onClick:s.addInstrument, style:'margin-top:13px'}, 'Add this way'),
       ]));
     }
   }
@@ -268,10 +276,10 @@ export function render(state, store){
   // Reset
   const resetChildren = [];
   if(s.resetIdle){
-    resetChildren.push(h('button', {onClick:s.armReset, style:'background:none;border:none;padding:0;font-family:var(--font-body);font-size:11.5px;color:color-mix(in srgb, var(--color-text) 45%, transparent);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, 'Reset instruments, routines and goals to the original setup'));
+    resetChildren.push(h('button', {onClick:s.armReset, style:'background:none;border:none;padding:0;font-family:var(--font-body);font-size:11.5px;color:color-mix(in srgb, var(--color-text) 45%, transparent);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, 'Reset ways, routines and goals to the original setup'));
   }
   if(s.resetArmed){
-    resetChildren.push(h('div', {style:'font-size:12.5px;line-height:1.55;color:var(--color-accent-800);margin-bottom:10px'}, 'This puts the instruments, routines and goals back as they started. Sessions, ticks and licks are kept.'));
+    resetChildren.push(h('div', {style:'font-size:12.5px;line-height:1.55;color:var(--color-accent-800);margin-bottom:10px'}, 'This puts the ways, routines and goals back as they started. Sessions, ticks and licks are kept.'));
     resetChildren.push(h('div', {style:'display:flex;gap:9px'}, [
       h('button', {class:'btn btn-secondary', onClick:s.cancelReset, style:'flex:1'}, 'Keep mine'),
       h('button', {class:'btn btn-primary', onClick:s.doReset, style:'flex:1'}, 'Reset'),
