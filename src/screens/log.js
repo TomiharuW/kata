@@ -2,6 +2,7 @@
 // JSON/CSV export. Ported 1:1 from reference/Kata.dc.html's `isLog` block
 // (lines ~280-446).
 import { h } from '../lib/dom.js';
+import { keepRow } from '../lib/keep.js';
 
 const chevronDown = (rotate, size=12, sw=2.4, stroke='var(--color-accent-700)') => h('svg', {width:size, height:size, viewBox:'0 0 24 24', fill:'none', stroke, 'stroke-width':sw, 'stroke-linecap':'round', 'stroke-linejoin':'round', style:`transform:${rotate}`}, [
   h('path', {d:'m6 9 6 6 6-6'}),
@@ -208,7 +209,10 @@ export function render(state, store){
   }
 
   const children = [
-    h('h1', {style:'font-size:26px;margin:10px 0 16px'}, 'Practice Log'),
+    h('div', {style:'display:flex;align-items:baseline;gap:10px;margin:10px 0 16px'}, [
+      h('h1', {style:'font-size:26px;margin:0;flex:1;min-width:0'}, 'Practice Log'),
+      keepRow('Keep', 'flex:none'),
+    ]),
     h('div', {class:'card elev-sm', style:'margin-bottom:18px'}, formChildren),
     h('div', {style:'margin-bottom:18px;padding:13px 0;border-top:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider)'}, [
       h('div', {style:'font-size:13px;display:flex;align-items:baseline;gap:6px'}, [
