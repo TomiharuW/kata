@@ -245,6 +245,17 @@ export function render(state, store){
     ])));
   }
 
+  // Calendar — display-only embed, so the id lives in device storage rather
+  // than the public repo.
+  children.push(h('div', {style:'margin:26px 0 0;padding-top:14px;border-top:1px solid var(--color-divider)'}, [
+    h('div', {style:'font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:8px'}, 'Calendar 予定'),
+    h('div', {style:'font-size:12px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 50%, transparent);margin-bottom:10px'}, 'A public Google Calendar shown on the Routine screen. Calendar settings → Integrate calendar → Calendar ID. It stays on this device — it is not in the app’s source — and travels in your backup file.'),
+    h('div', {class:'field'}, [
+      h('label', {}, 'Calendar ID'),
+      h('input', {class:'input', style:'font-size:12px', placeholder:'…@group.calendar.google.com', value:s.calendarId, onInput:s.setCalendarId}),
+    ]),
+  ]));
+
   // Backup & restore — a full snapshot of everything persisted (sessions,
   // goals, tasks, instruments, licks, study queue, routine — not just the
   // practice log the Log screen's Export .json covers), since data lives only

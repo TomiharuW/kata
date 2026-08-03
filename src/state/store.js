@@ -59,6 +59,7 @@ const BACKUP_FIELDS = [
   'instruments', 'goals', 'projects', 'routineSteps',
   // Migration marker — must persist, or purgeLegacySeed() would re-run on every
   // load and keep resetting progress on the seeded goals.
+  'calendarId', 'calendarView',
   '_seedPurged', '_quickConverted', '_tasksLinked',
 ];
 
@@ -133,6 +134,8 @@ class Store {
       backupMsg: '',
       logMsg: '', logMsgOk: false,
       taskMsg: '',
+      calendarId: '',
+      calendarView: 'AGENDA',
     };
     this.listeners = new Set();
   }
@@ -255,6 +258,7 @@ class Store {
           extraToday: s.extraToday||{}, jpStudied: s.jpStudied||{},
           study: s.study||SEED_STUDY, sheetUrl: s.sheetUrl||'', sheetPushUrl: s.sheetPushUrl||'',
           syncAt: s.syncAt||'', pendingPush: s.pendingPush||[],
+          calendarId: s.calendarId||'', calendarView: s.calendarView||'AGENDA',
           licks: (s.licks && s.licks.length) ? s.licks : seedLicks(),
           routine: Object.assign({}, this.state.routine, s.routine||{}),
         });
@@ -323,6 +327,8 @@ class Store {
         sheetUrl: s.sheetUrl != null ? s.sheetUrl : this.state.sheetUrl,
         sheetPushUrl: s.sheetPushUrl != null ? s.sheetPushUrl : this.state.sheetPushUrl,
         syncAt: s.syncAt || this.state.syncAt,
+        calendarId: s.calendarId != null ? s.calendarId : this.state.calendarId,
+        calendarView: s.calendarView || this.state.calendarView,
         pendingPush: s.pendingPush || this.state.pendingPush,
         licks: (s.licks && s.licks.length) ? s.licks : this.state.licks,
         routine: s.routine ? Object.assign({}, this.state.routine, s.routine) : this.state.routine,
@@ -837,6 +843,24 @@ class Store {
     if(t.mode==='date') return t.date ? labelFor(t.date) : 'No date set';
     if(t.mode==='range') return (t.from?labelFor(t.from):'—')+' → '+(t.to?labelFor(t.to):'—');
     return '';
+  }
+
+  // Google Calendar embed. Display only: an iframe is opaque to the page, so
+  // this shows commitments but cannot feed the routine's free-time maths —
+  // that would need the Calendar API and a key.
+  calendarEmbedUrl(){
+    const id = (this.state.calendarId||'').trim();
+    if(!id) return '';
+    let tz = 'UTC';
+    try{ tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; }catch(e){}
+    const p = [
+      'src=' + encodeURIComponent(id),
+      'ctz=' + encodeURIComponent(tz),
+      'mode=' + encodeURIComponent(this.state.calendarView||'AGENDA'),
+      'bgcolor=%23f3f2f2',
+      'showTitle=0', 'showPrint=0', 'showTabs=0', 'showCalendars=0', 'showTz=0',
+    ];
+    return 'https://calendar.google.com/calendar/embed?' + p.join('&');
   }
 
   /* ---- rotation sizing ---- */
@@ -1644,6 +1668,12 @@ class Store {
       setVariantCurrent: ()=>{ const routine=Object.assign({},state.routine,{variant:'current'}); this.setState({routine}); this.persist({routine}); },
       setVariantThu: ()=>{ const routine=Object.assign({},state.routine,{variant:'thu'}); this.setState({routine}); this.persist({routine}); },
       weekDays, autofillRotation: ()=>this.autofill(), coverage,
+      calendarUrl: this.calendarEmbedUrl(),
+      hasCalendar: !!(state.calendarId||'').trim(),
+      calendarView: state.calendarView||'AGENDA',
+      setCalendarView: v=>{ this.setState({calendarView:v}); this.persist({calendarView:v}); },
+      calOpen: state.libOpen.cal===undefined ? true : !!state.libOpen.cal,
+      toggleCal: ()=>{ const o=Object.assign({},state.libOpen); o.cal = !(state.libOpen.cal===undefined ? true : !!state.libOpen.cal); this.setState({libOpen:o}); },
       weekGrid, gridLegend, allTasks,
       isViewList: state.routineView==='list', isViewGrid: state.routineView==='grid',
       setViewList: ()=>this.setState({routineView:'list'}),
@@ -2250,6 +2280,8 @@ class Store {
         GOALS.filter(g=>!g.archived).forEach(g=>out.push({value:'g:'+g.id, name:'◦ '+g.name}));
         return out;
       })(),
+      calendarId: state.calendarId||'',
+      setCalendarId: e=>{ const v=e.target.value.trim(); this.setState({calendarId:v}); this.persist({calendarId:v}); },
       backupMsg: state.backupMsg,
       exportBackup: ()=>this.exportBackup(),
       importBackup: file=>this.importBackup(file),

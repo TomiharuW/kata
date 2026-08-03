@@ -66,6 +66,29 @@ export function render(state, store){
       'Thursday is given to work. Its two instrument blocks have been redistributed to the lightest mornings — shown with a caret.'));
   }
 
+  // Commitments — the real calendar, so the week can be planned around what is
+  // actually booked rather than the fixed strings in the day definitions.
+  children.push(h('button', {onClick:r.toggleCal, style:'display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;padding:0;margin:0 0 9px;cursor:pointer;font-family:var(--font-body)'}, [
+    chevronDown(r.calOpen ? 'rotate(180deg)' : 'rotate(0deg)'),
+    h('span', {style:'font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)'}, 'Commitments 予定'),
+  ]));
+  if(r.calOpen){
+    if(!r.hasCalendar){
+      children.push(h('div', {style:'font-size:12.5px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 48%, transparent);margin-bottom:14px'},
+        'No calendar connected. Paste a public Google Calendar ID in Setup and it appears here, so the week can be planned around what is already booked.'));
+    } else {
+      children.push(h('div', {style:'display:flex;gap:14px;margin-bottom:8px'}, ['AGENDA','WEEK','MONTH'].map(v =>
+        h('button', {onClick:()=>r.setCalendarView(v), style:`background:none;border:none;padding:2px 0;font-family:var(--font-body);font-size:11.5px;cursor:pointer;color:${r.calendarView===v ? 'var(--color-accent-700)' : 'color-mix(in srgb, var(--color-text) 50%, transparent)'};border-bottom:1px solid ${r.calendarView===v ? 'var(--color-accent)' : 'transparent'}`},
+          v === 'AGENDA' ? 'Agenda' : v === 'WEEK' ? 'Week' : 'Month')
+      )));
+      children.push(h('div', {style:'border:1px solid var(--color-divider);border-radius:var(--radius-sm);overflow:hidden;height:340px;margin-bottom:6px'}, [
+        h('iframe', {src:r.calendarUrl, title:'Commitments', loading:'lazy', style:'width:100%;height:100%;border:none;display:block'}),
+      ]));
+      children.push(h('div', {style:'font-size:10.5px;line-height:1.5;color:color-mix(in srgb, var(--color-text) 45%, transparent);margin-bottom:18px'},
+        'Read-only, and it needs a connection — the rest of Kata works offline, this panel will not.'));
+    }
+  }
+
   children.push(h('div', {style:'display:flex;align-items:baseline;gap:8px;margin-bottom:2px'}, [
     h('div', {style:'font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)'}, 'The week'),
     h('button', {onClick:r.autofillRotation, style:'margin-left:auto;background:none;border:none;padding:4px 0;font-family:var(--font-body);font-size:11.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, 'Refill by staleness'),
