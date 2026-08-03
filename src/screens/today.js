@@ -58,11 +58,40 @@ function projectCard(t){
       h('span', {style:`font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid ${c.stroke};color:${c.stroke};white-space:nowrap`}, c.name)
     )),
     h('div', {style:'margin-top:13px;padding-top:12px;border-top:1px solid var(--color-divider)'}, [
-      h('div', {style:'font-size:10.5px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 50%, transparent);margin-bottom:7px'}, `Next steps · ${p.progressLabel}`),
-      p.openSteps.length ? null : h('div', {style:'font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 48%, transparent);padding:2px 0 6px'}, 'Every step is done. Finish the push, or add the next one in Goals.'),
-      ...p.openSteps.map(s => h('button', {onClick:s.cycle, style:`display:flex;align-items:center;gap:9px;width:100%;background:none;border:none;padding:7px 0;text-align:left;cursor:pointer;font-family:var(--font-body);font-size:13.5px;color:${s.color}`}, [
-        stepCircle(s), s.label,
-      ])),
+      h('div', {style:'display:flex;align-items:baseline;gap:8px;margin-bottom:7px'}, [
+        h('div', {style:'font-size:10.5px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 50%, transparent)'}, `${p.editing ? 'All steps' : 'Next steps'} · ${p.progressLabel}`),
+        h('button', {onClick:p.toggleEdit, style:'margin-left:auto;background:none;border:none;padding:0;font-family:var(--font-body);font-size:11px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, p.editing ? 'Done editing' : 'Edit steps'),
+      ]),
+
+      // Reading mode: the next three, tappable to advance.
+      ...(p.editing ? [] : [
+        p.openSteps.length ? null : h('div', {style:'font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 48%, transparent);padding:2px 0 6px'}, 'Every step is done. Add the next one, or finish the push.'),
+        ...p.openSteps.map(s => h('button', {onClick:s.cycle, style:`display:flex;align-items:center;gap:9px;width:100%;background:none;border:none;padding:7px 0;text-align:left;cursor:pointer;font-family:var(--font-body);font-size:13.5px;color:${s.color}`}, [
+          stepCircle(s), h('span', {style:'flex:1;min-width:0'}, s.label),
+          s.tickLabel ? h('span', {title:s.tickTitle, style:'flex:none;font-size:10.5px;font-variant-numeric:tabular-nums;color:var(--color-accent-700);border:1px solid var(--color-accent);border-radius:999px;padding:1px 7px'}, s.tickLabel) : null,
+        ])),
+      ]),
+
+      // Editing mode: every step, renameable, plus add and delete.
+      ...(p.editing ? [
+        ...p.allSteps.map(s => h('div', {style:'display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid var(--color-divider)'}, [
+          h('button', {onClick:s.cycle, 'aria-label':'Advance step', style:'flex:none;background:none;border:none;padding:0;cursor:pointer;line-height:0'}, [stepCircle(s)]),
+          h('input', {class:'input', style:'flex:1;min-width:0;font-size:12.5px;padding:6px 8px', value:s.label, onChange:s.rename}),
+          h('button', {onClick:s.remove, class:'btn btn-icon btn-ghost', 'aria-label':'Remove step', style:'flex:none;width:26px;height:26px'}, [
+            h('svg', {width:13, height:13, viewBox:'0 0 24 24', fill:'none', stroke:'currentColor', 'stroke-width':1.8, 'stroke-linecap':'round', 'stroke-linejoin':'round'}, [
+              h('path', {d:'M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m2 0-1 13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7'}),
+            ]),
+          ]),
+        ])),
+        h('div', {style:'display:flex;gap:8px;margin-top:10px'}, [
+          h('input', {class:'input', style:'flex:1;min-width:0;font-size:12.5px;padding:7px 9px', placeholder:'Add a step', value:p.newStep, onInput:p.setNewStep}),
+          h('button', {onClick:p.addStep, class:'btn btn-secondary', style:'flex:none;font-size:12px;padding:7px 12px'}, 'Add'),
+        ]),
+        h('div', {style:'display:flex;gap:9px;margin-top:12px'}, [
+          h('div', {class:'field', style:'flex:1;min-width:0'}, [h('label', {}, 'Name'), h('input', {class:'input', style:'font-size:12.5px', value:p.name, onChange:p.rename})]),
+          h('div', {class:'field', style:'flex:none;width:130px'}, [h('label', {}, 'Done by'), h('input', {class:'input', type:'date', style:'font-size:12.5px', value:p.until, onChange:p.setUntil})]),
+        ]),
+      ] : []),
     ]),
     h('button', {class:'btn btn-secondary btn-block', onClick:p.logIt, style:'margin-top:12px'}, 'Log against this project'),
   ]);

@@ -134,6 +134,7 @@ class Store {
       backupMsg: '',
       logMsg: '', logMsgOk: false,
       taskMsg: '',
+      todayProjectEdit: false,
       calendarId: '',
       calendarView: 'AGENDA',
     };
@@ -1342,6 +1343,26 @@ class Store {
       sprintLabel: proj.sprint ? 'In sprint — on every day' : 'Sprint mode off',
       toggleSprint: ()=>this.patchProject(proj.id, {sprint: !proj.sprint}),
       openSteps: proj.steps.filter(s=>this.stepStatusOf(s)!=='done').slice(0,3).map(s=>this.stepView(s)),
+      // Editing the push without leaving Today: the steps are the work, and
+      // they change while you are doing them.
+      editing: !!state.todayProjectEdit,
+      toggleEdit: ()=>this.setState({todayProjectEdit: !state.todayProjectEdit}),
+      allSteps: proj.steps.map(st=>{
+        const v = this.stepView(st);
+        return {label: st.label, tickLabel: v.tickLabel, tickTitle: v.tickTitle,
+          statusLabel: this.stepStatusOf(st),
+          fill: v.fill, stroke: v.stroke, dash: v.dash, color: v.color,
+          cycle: v.cycle,
+          rename: e=>this.renameProjectStep(proj.id, st.id, e.target.value),
+          remove: ()=>this.removeProjectStep(proj.id, st.id)};
+      }),
+      newStep: state.newStep[proj.id]||'',
+      setNewStep: e=>{ const o=Object.assign({},state.newStep); o[proj.id]=e.target.value; this.setStateQuiet({newStep:o}); },
+      addStep: ()=>{ this.addProjectStep(proj.id, this.state.newStep[proj.id]||''); const o=Object.assign({},this.state.newStep); delete o[proj.id]; this.setState({newStep:o}); },
+      rename: e=>this.patchProject(proj.id, {name:e.target.value}),
+      setBlurb: e=>this.patchProject(proj.id, {blurb:e.target.value}),
+      setUntil: e=>this.patchProject(proj.id, {until:e.target.value}),
+      until: proj.until||'',
       logIt: ()=>this.jumpToLog(proj.activities[0], proj.id),
       remove: ()=>this.removeProject(proj.id),
     } : null;
