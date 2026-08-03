@@ -352,6 +352,14 @@ export const DEFAULT_LESSONS = [
   {id:'ls-malone', name:'Mike Malone — jazz', act:'trumpet', day:'thu', time:'11:00', mins:60},
 ];
 
+// Pinned days — a Way fixed to a weekday regardless of staleness. Shakuhachi
+// and trumpet sit on Thursday because that is when the lessons are: practising
+// them anywhere else in the week wastes the correction while it is fresh.
+export const DEFAULT_PINS = [
+  {id:'pin-shaku-thu',   act:'shaku',   day:'thu'},
+  {id:'pin-trumpet-thu', act:'trumpet', day:'thu'},
+];
+
 export const DEFAULT_BLOCKS = {ear:15, a:45, b:45, jpn:30, cardio:35, strength:25};
 export const DEFAULT_STRENGTH_DAYS = ['tue','fri'];
 

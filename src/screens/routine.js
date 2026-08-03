@@ -93,6 +93,8 @@ export function render(state, store){
     h('div', {style:'font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)'}, 'The week'),
     h('button', {onClick:r.autofillRotation, style:'margin-left:auto;background:none;border:none;padding:4px 0;font-family:var(--font-body);font-size:11.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, 'Refill by staleness'),
   ]));
+  children.push(h('div', {style:'font-size:10.5px;line-height:1.5;color:color-mix(in srgb, var(--color-text) 45%, transparent);margin-bottom:4px'},
+    '◆ marks a pinned day — refilling leaves those alone.'));
   children.push(h('div', {style:'display:flex;gap:14px;margin:8px 0 12px'}, [
     h('button', {onClick:r.setViewGrid, style:`background:none;border:none;padding:2px 0;font-family:var(--font-body);font-size:11.5px;cursor:pointer;color:${r.viewGridColor};border-bottom:1px solid ${r.viewGridUnderline}`}, 'Week strips'),
     h('button', {onClick:r.setViewList, style:`background:none;border:none;padding:2px 0;font-family:var(--font-body);font-size:11.5px;cursor:pointer;color:${r.viewListColor};border-bottom:1px solid ${r.viewListUnderline}`}, 'Day list'),
@@ -146,6 +148,26 @@ export function render(state, store){
       ]),
     ]));
   }
+
+  // Scheduled days — a Way pinned to a weekday. Pinned slots are never
+  // displaced by "Refill by staleness"; the rest of the week still is.
+  children.push(h('div', {style:'display:flex;align-items:baseline;gap:8px;margin:24px 0 8px'}, [
+    h('div', {style:'font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)'}, 'Scheduled days 定日'),
+    h('button', {onClick:r.addPin, style:'margin-left:auto;background:none;border:none;padding:2px 0;font-family:var(--font-body);font-size:11.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, '＋ pin a day'),
+  ]));
+  children.push(h('div', {style:'font-size:11.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 48%, transparent);margin-bottom:10px'},
+    'A pinned Way always takes a slot on that day — refilling by staleness works around it. Everything unpinned still rotates by whatever has gone longest untouched.'));
+  if(!r.pins.length){
+    children.push(h('div', {style:'font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 48%, transparent);margin-bottom:10px'}, 'Nothing pinned — the whole week is decided by staleness.'));
+  }
+  children.push(...r.pins.map(pin => h('div', {style:'display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--color-divider)'}, [
+    h('span', {style:`width:9px;height:9px;border-radius:999px;border:2px solid ${pin.stroke};flex:none`}),
+    h('select', {class:'input', style:'flex:1;min-width:0;font-size:12.5px;padding:6px 8px', value:pin.act, onChange:pin.setAct},
+      r.rotationOptions.map(o => h('option', {value:o.id}, o.name))),
+    h('select', {class:'input', style:'flex:none;width:82px;font-size:12.5px;padding:6px 8px', value:pin.day, onChange:pin.setDay},
+      r.dayOptions.map(d => h('option', {value:d.value}, d.name))),
+    h('button', {onClick:pin.remove, class:'btn btn-icon btn-ghost', 'aria-label':'Unpin', style:'flex:none;width:28px;height:28px'}, [trashIcon()]),
+  ])));
 
   // Lessons — fixed appointments with a teacher. Unlike the rotation these
   // times are not yours to move, so the week is built around them.

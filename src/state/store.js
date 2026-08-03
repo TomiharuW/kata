@@ -17,7 +17,7 @@ import {
   SHAKU_PHASES, SHAKU_ROUTINE, seedRoutineSteps, LICK_SOURCES, seedLicks,
   DEFAULT_TASKS, GOALS, SEED_GOALS, applyGoals,
   PROJECTS, SEED_PROJECTS, applyProjects, SEED_DONE_DATES,
-  DAYS, DEFAULT_ROTATION, DEFAULT_BLOCKS, DEFAULT_STRENGTH_DAYS, DEFAULT_LESSONS,
+  DAYS, DEFAULT_ROTATION, DEFAULT_BLOCKS, DEFAULT_STRENGTH_DAYS, DEFAULT_LESSONS, DEFAULT_PINS,
   toKey, labelFor, mondayOf,
   STEP_STYLE, NEXT_STATUS,
 } from '../data/index.js';
@@ -118,7 +118,7 @@ class Store {
       libOpen: {},
       goalSort: 'default',
       tick: 0,
-      routine: {variant:'current', rotation: DEFAULT_ROTATION, blocks: DEFAULT_BLOCKS, strengthDays: DEFAULT_STRENGTH_DAYS, rotationSize: 2, slotsByDay: {sat:1, sun:1}, lessons: clone(DEFAULT_LESSONS)},
+      routine: {variant:'current', rotation: DEFAULT_ROTATION, blocks: DEFAULT_BLOCKS, strengthDays: DEFAULT_STRENGTH_DAYS, rotationSize: 2, slotsByDay: {sat:1, sun:1}, lessons: clone(DEFAULT_LESSONS), pins: clone(DEFAULT_PINS)},
       sort: 'newest',
       filterActivity: 'all',
       stuckOpen: {},
@@ -864,6 +864,24 @@ class Store {
     return 'https://calendar.google.com/calendar/embed?' + p.join('&');
   }
 
+  addPin(){
+    const pins = (this.state.routine.pins||[]).concat([
+      {id:'pin-'+Date.now(), act:(ROTATION_POOL[0]||'other'), day:'mon'},
+    ]);
+    const routine = Object.assign({}, this.state.routine, {pins});
+    this.setState({routine}); this.persist({routine});
+  }
+  patchPin(id, patch){
+    const pins = (this.state.routine.pins||[]).map(p=>p.id===id ? Object.assign({}, p, patch) : p);
+    const routine = Object.assign({}, this.state.routine, {pins});
+    this.setState({routine}); this.persist({routine});
+  }
+  removePin(id){
+    const pins = (this.state.routine.pins||[]).filter(p=>p.id!==id);
+    const routine = Object.assign({}, this.state.routine, {pins});
+    this.setState({routine}); this.persist({routine});
+  }
+
   lessonsOn(dayId){ return (this.state.routine.lessons||[]).filter(l=>l.day===dayId); }
   commitLessons(lessons){
     const routine = Object.assign({}, this.state.routine, {lessons});
@@ -1039,9 +1057,16 @@ class Store {
     const stale = ROTATION_POOL.slice().sort((a,b)=>{ const da=last[a]||'', db=last[b]||''; return da<db?-1:da>db?1:0; });
     const rot = {};
     if(!stale.length){ DAYS.forEach(d=>{ rot[d.id] = []; }); return rot; }
+    const pins = r.pins||[];
     DAYS.forEach((d,di)=>{
       const want = this.slotsFor(d.id);
-      const base = (r.rotation[d.id]||[]).slice(0, want);
+      // Pinned Ways claim their slots first — staleness never displaces them.
+      const pinnedActs = pins.filter(p=>p.day===d.id).map(p=>p.act)
+        .filter(a=>ROTATION_POOL.indexOf(a)>=0);
+      const base = [];
+      pinnedActs.forEach(a=>{ if(base.length<want && base.indexOf(a)<0) base.push(a); });
+      // then whatever was set by hand, then staleness for anything still empty
+      (r.rotation[d.id]||[]).forEach(a=>{ if(base.length<want && base.indexOf(a)<0) base.push(a); });
       while(base.length < want){
         const start = (di*2 + base.length) % stale.length;
         let pick = null;
@@ -1051,7 +1076,7 @@ class Store {
         }
         base.push(pick || stale[start]);
       }
-      rot[d.id] = base.map(x=>({act:x, moved:false}));
+      rot[d.id] = base.map(x=>({act:x, moved:false, pinned: pinnedActs.indexOf(x)>=0}));
     });
     if(r.variant === 'thu'){
       const moved = rot.thu.map(x=>x.act);
@@ -1084,11 +1109,24 @@ class Store {
       return da < db ? -1 : da > db ? 1 : 0;
     });
     if(!order.length) return;
+    const pins = this.state.routine.pins||[];
     const rotation = {}; let n = 0;
     DAYS.forEach(d=>{
-      rotation[d.id] = [];
       const slots = this.slotsFor(d.id);
-      for(let i=0;i<slots;i++){ rotation[d.id].push(order[n % order.length]); n++; }
+      // Pinned Ways survive a refill; only the free slots are re-derived.
+      const pinnedActs = pins.filter(p=>p.day===d.id).map(p=>p.act)
+        .filter(a=>ROTATION_POOL.indexOf(a)>=0);
+      const row = pinnedActs.slice(0, slots);
+      while(row.length < slots){
+        let pick = null;
+        for(let k=0;k<order.length;k++){
+          const cand = order[(n+k) % order.length];
+          if(row.indexOf(cand)<0){ pick = cand; break; }
+        }
+        row.push(pick || order[n % order.length]);
+        n++;
+      }
+      rotation[d.id] = row;
     });
     const routine = Object.assign({}, this.state.routine, {rotation});
     this.setState({routine});
@@ -1604,8 +1642,10 @@ class Store {
       list.push({actId:'ear', label:'Ear '+blocks.ear+'m', editable:false});
       (rot[d.id]||[]).forEach((entry, i)=>{
         const a = actOf(entry.act);
-        list.push({actId:entry.act, label:(entry.moved?'‹ ':'')+a.name+' '+(i===0?blocks.a:blocks.b)+'m',
-                   editable:true, cycle:()=>this.cycleSlot(entry.srcDay||d.id, entry.srcSlot==null?i:entry.srcSlot, entry.act)});
+        list.push({actId:entry.act,
+                   label:(entry.moved?'‹ ':'')+(entry.pinned?'◆ ':'')+a.name+' '+(i===0?blocks.a:blocks.b)+'m',
+                   editable:true, pinned:!!entry.pinned,
+                   cycle:()=>this.cycleSlot(entry.srcDay||d.id, entry.srcSlot==null?i:entry.srcSlot, entry.act)});
       });
       this.lessonsOn(d.id).forEach(l=>list.push({
         actId:l.act, label:'◉ '+l.name+' '+this.clockLabel(l.time), editable:false, lesson:true,
@@ -1632,7 +1672,7 @@ class Store {
       const dk = toKey(dd);
       const items = [];
       items.push({actId:'ear', label:'Ear', mins:blocks.ear, firm:false});
-      (rot[d.id]||[]).forEach((e,i)=>items.push({actId:e.act, label:(e.moved?'‹':'')+abbrOf(e.act), mins:(i===0?blocks.a:blocks.b), firm:true}));
+      (rot[d.id]||[]).forEach((e,i)=>items.push({actId:e.act, label:(e.moved?'‹':'')+abbrOf(e.act)+(e.pinned?'◆':''), mins:(i===0?blocks.a:blocks.b), firm:true, pinned:!!e.pinned}));
       this.lessonsOn(d.id).forEach(l=>items.push({
         actId:l.act, label:abbrOf(l.act)+'◉', mins:l.mins, firm:true, lesson:true, lessonName:l.name,
       }));
@@ -1741,6 +1781,17 @@ class Store {
         remove: ()=>this.removeLesson(l.id),
       })),
       dayOptions: DAYS.map(d=>({value:d.id, name:d.name})),
+      pins: (state.routine.pins||[]).map(pin=>({
+        act:pin.act, day:pin.day,
+        name: actOf(pin.act).name, jp: actOf(pin.act).jp||'',
+        stroke: actOf(pin.act).stroke,
+        whenLabel: 'Every '+((DAYS.find(d=>d.id===pin.day)||{}).name||pin.day),
+        setAct: e=>this.patchPin(pin.id, {act:e.target.value}),
+        setDay: e=>this.patchPin(pin.id, {day:e.target.value}),
+        remove: ()=>this.removePin(pin.id),
+      })),
+      rotationOptions: ROTATION_POOL.map(id=>({id, name:actOf(id).name})),
+      addPin: ()=>this.addPin(),
       activityOptions: this.activityOptions(),
       addLesson: ()=>this.addLesson(),
       weekGrid, gridLegend, allTasks,
