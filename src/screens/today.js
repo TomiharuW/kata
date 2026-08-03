@@ -66,10 +66,21 @@ function projectCard(t){
       // Reading mode: the next three, tappable to advance.
       ...(p.editing ? [] : [
         p.openSteps.length ? null : h('div', {style:'font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 48%, transparent);padding:2px 0 6px'}, 'Every step is done. Add the next one, or finish the push.'),
-        ...p.openSteps.map(s => h('button', {onClick:s.cycle, style:`display:flex;align-items:center;gap:9px;width:100%;background:none;border:none;padding:7px 0;text-align:left;cursor:pointer;font-family:var(--font-body);font-size:13.5px;color:${s.color}`}, [
-          stepCircle(s), h('span', {style:'flex:1;min-width:0'}, s.label),
-          s.tickLabel ? h('span', {title:s.tickTitle, style:'flex:none;font-size:10.5px;font-variant-numeric:tabular-nums;color:var(--color-accent-700);border:1px solid var(--color-accent);border-radius:999px;padding:1px 7px'}, s.tickLabel) : null,
-        ])),
+        ...p.openSteps.map(s => s.repeat
+          ? h('div', {style:'display:flex;align-items:center;gap:9px;padding:7px 0'}, [
+              h('button', {onClick:s.toggleToday, 'aria-label':'Done today', style:'flex:none;background:none;border:none;padding:0;cursor:pointer;line-height:0'}, [
+                h('svg', {width:19, height:19, viewBox:'0 0 20 20'}, [
+                  h('rect', {x:2, y:2, width:16, height:16, rx:3, fill:s.doneToday?'var(--color-accent)':'transparent', stroke:s.doneToday?'var(--color-accent)':'color-mix(in srgb, var(--color-text) 30%, transparent)', 'stroke-width':1.5}),
+                  s.doneToday ? h('path', {d:'m6 10.5 2.6 2.6L14.5 7', fill:'none', stroke:'var(--color-bg)', 'stroke-width':2, 'stroke-linecap':'round', 'stroke-linejoin':'round'}) : null,
+                ]),
+              ]),
+              h('span', {style:`flex:1;min-width:0;font-size:13.5px;color:${s.doneToday?'color-mix(in srgb, var(--color-text) 45%, transparent)':'var(--color-text)'}`}, s.label),
+              h('span', {style:'flex:none;font-size:10.5px;font-variant-numeric:tabular-nums;color:var(--color-accent-700);border:1px solid var(--color-accent);border-radius:999px;padding:1px 7px'}, s.repeatLabel),
+            ])
+          : h('button', {onClick:s.cycle, style:`display:flex;align-items:center;gap:9px;width:100%;background:none;border:none;padding:7px 0;text-align:left;cursor:pointer;font-family:var(--font-body);font-size:13.5px;color:${s.color}`}, [
+              stepCircle(s), h('span', {style:'flex:1;min-width:0'}, s.label),
+              s.tickLabel ? h('span', {title:s.tickTitle, style:'flex:none;font-size:10.5px;font-variant-numeric:tabular-nums;color:var(--color-accent-700);border:1px solid var(--color-accent);border-radius:999px;padding:1px 7px'}, s.tickLabel) : null,
+            ])),
       ]),
 
       // Editing mode: every step, renameable, plus add and delete.
@@ -82,6 +93,15 @@ function projectCard(t){
               h('path', {d:'M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m2 0-1 13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7'}),
             ]),
           ]),
+        ])),
+        // Daily controls for each step: tick once a day, finish on a count or a date.
+        ...p.allSteps.map(s => h('div', {style:'display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:0 0 8px 2px'}, [
+          h('button', {onClick:s.toggleRepeat, style:`flex:none;padding:4px 9px;border-radius:999px;border:1px ${s.repeat?'solid':'dashed'} ${s.repeat?'var(--color-accent)':'var(--color-divider)'};background:${s.repeat?'var(--color-accent-100)':'transparent'};color:${s.repeat?'var(--color-accent-800)':'color-mix(in srgb, var(--color-text) 50%, transparent)'};font-family:var(--font-body);font-size:10.5px;cursor:pointer;white-space:nowrap`},
+            s.repeat ? 'Daily · ' + s.label.slice(0, 18) + (s.label.length > 18 ? '…' : '') : 'Make daily · ' + s.label.slice(0, 14) + (s.label.length > 14 ? '…' : '')),
+          s.repeat ? h('input', {class:'input', type:'number', min:0, placeholder:'times', style:'flex:none;width:74px;font-size:11.5px;padding:4px 7px', value:s.target, onInput:s.setTarget}) : null,
+          s.repeat ? h('span', {style:'font-size:10.5px;color:color-mix(in srgb, var(--color-text) 42%, transparent)'}, 'or by') : null,
+          s.repeat ? h('input', {class:'input', type:'date', style:'flex:none;width:126px;font-size:11.5px;padding:4px 7px', value:s.until, onChange:s.setUntil}) : null,
+          s.repeat ? h('span', {style:'font-size:10.5px;font-variant-numeric:tabular-nums;color:var(--color-accent-700)'}, s.repeatLabel) : null,
         ])),
         h('div', {style:'display:flex;gap:8px;margin-top:10px'}, [
           h('input', {class:'input', style:'flex:1;min-width:0;font-size:12.5px;padding:7px 9px', placeholder:'Add a step', value:p.newStep, onInput:p.setNewStep}),

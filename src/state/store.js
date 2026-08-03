@@ -59,6 +59,7 @@ const BACKUP_FIELDS = [
   'instruments', 'goals', 'projects', 'routineSteps',
   // Migration marker — must persist, or purgeLegacySeed() would re-run on every
   // load and keep resetting progress on the seeded goals.
+  'stepDaily',
   'calendarId', 'calendarView',
   '_seedPurged', '_quickConverted', '_tasksLinked',
 ];
@@ -95,7 +96,7 @@ class Store {
       routineSteps: seedRoutineSteps(),
       setupOpen: {inst:true, routines:false, goals:false},
       setupInst: 'shaku',
-      instForm: {open:false, name:'', jp:'', jpR:'', hue:75, rotate:true},
+      instForm: {open:false, name:'', jp:'', jpR:'', hue:75, rotate:true, anchor:false},
       stepForm: {open:false, phase:'Warm up', label:'', mins:'5', cues:''},
       goalOpen: {},
       newStep: {},
@@ -135,6 +136,7 @@ class Store {
       logMsg: '', logMsgOk: false,
       taskMsg: '',
       todayProjectEdit: false,
+      stepDaily: {},
       calendarId: '',
       calendarView: 'AGENDA',
     };
@@ -256,7 +258,7 @@ class Store {
           activeProjectId: s.activeProjectId || (projects[0] && projects[0].id) || '', stepStatus: s.stepStatus||{},
           stepDates: s.stepDates||{}, userGoals: s.userGoals||[],
           tasks: s.tasks||DEFAULT_TASKS, taskDone: s.taskDone||{},
-          extraToday: s.extraToday||{}, jpStudied: s.jpStudied||{},
+          extraToday: s.extraToday||{}, jpStudied: s.jpStudied||{}, stepDaily: s.stepDaily||{},
           study: s.study||SEED_STUDY, sheetUrl: s.sheetUrl||'', sheetPushUrl: s.sheetPushUrl||'',
           syncAt: s.syncAt||'', pendingPush: s.pendingPush||[],
           calendarId: s.calendarId||'', calendarView: s.calendarView||'AGENDA',
@@ -323,6 +325,7 @@ class Store {
         tasks: (s.tasks && s.tasks.length) ? s.tasks.filter(t=>t.projectId || t.goalId) : this.state.tasks,
         taskDone: s.taskDone || this.state.taskDone,
         extraToday: s.extraToday || this.state.extraToday,
+        stepDaily: s.stepDaily || this.state.stepDaily,
         jpStudied: s.jpStudied || this.state.jpStudied,
         study: (s.study && s.study.length) ? s.study : this.state.study,
         sheetUrl: s.sheetUrl != null ? s.sheetUrl : this.state.sheetUrl,
@@ -613,10 +616,10 @@ class Store {
     if(!name) return;
     const a = {id:'in-'+Date.now(), name, jp:(f.jp||'').trim(), jpR:(f.jpR||'').trim(),
       abbr:name.replace(/[^A-Za-z0-9]/g,'').slice(0,3) || name.slice(0,2),
-      hue:Number(f.hue), rotate:!!f.rotate};
-    this.commitInstruments(this.state.instruments.concat([a]), {instForm:{open:false, name:'', jp:'', jpR:'', hue:f.hue, rotate:true}});
+      hue:Number(f.hue), rotate:!!f.rotate, anchor:!!f.anchor};
+    this.commitInstruments(this.state.instruments.concat([a]), {instForm:{open:false, name:'', jp:'', jpR:'', hue:f.hue, rotate:true, anchor:false}});
   }
-  canDeleteInstrument(a){ return !a.anchor && a.id!=='other'; }
+  canDeleteInstrument(a){ return a.id!=='other'; }
   removeInstrument(id){
     const a = this.state.instruments.find(x=>x.id===id);
     if(!a || !this.canDeleteInstrument(a)) return;
@@ -944,7 +947,44 @@ class Store {
     this.persist({extraToday});
   }
 
-  stepStatusOf(step){ return this.state.stepStatus[step.id] || step.d || 'todo'; }
+  // A repeating step is ticked once per day and finishes either when it has
+  // been done `target` times or once its `until` date has passed. Its status is
+  // derived, not stored, so progress bars and rollups follow automatically.
+  stepDayKeys(stepId){
+    const out = [];
+    Object.keys(this.state.stepDaily||{}).forEach(k=>{ if(this.state.stepDaily[k][stepId]) out.push(k); });
+    return out.sort();
+  }
+  stepDailyCount(stepId){ return this.stepDayKeys(stepId).length; }
+  isStepDoneToday(stepId){
+    const d = this.state.stepDaily[toKey(new Date())];
+    return !!(d && d[stepId]);
+  }
+  toggleStepDay(stepId, dateKey){
+    const key = dateKey || toKey(new Date());
+    const day = Object.assign({}, this.state.stepDaily[key]);
+    if(day[stepId]) delete day[stepId]; else day[stepId] = true;
+    const stepDaily = Object.assign({}, this.state.stepDaily, {[key]: day});
+    this.setState({stepDaily});
+    this.persist({stepDaily});
+  }
+  repeatStepDone(step){
+    if(step.until && toKey(new Date()) > step.until) return true;
+    const target = Number(step.target)||0;
+    return target > 0 && this.stepDailyCount(step.id) >= target;
+  }
+  stepStatusOf(step){
+    if(step && step.repeat){
+      if(this.repeatStepDone(step)) return 'done';
+      return this.stepDailyCount(step.id) > 0 ? 'progress' : 'todo';
+    }
+    return this.state.stepStatus[step.id] || step.d || 'todo';
+  }
+  setStepRepeat(projectId, stepId, patch){
+    this.commitProjects(this.state.projects.map(p=>p.id!==projectId ? p : Object.assign({}, p, {
+      steps: p.steps.map(st=>st.id===stepId ? Object.assign({}, st, patch) : st),
+    })));
+  }
   cycleStep(step){
     const next = NEXT_STATUS[this.stepStatusOf(step)];
     const stepStatus = Object.assign({}, this.state.stepStatus, {[step.id]: next});
@@ -1327,11 +1367,11 @@ class Store {
       markColor: studied ? 'var(--color-accent-800)' : 'var(--color-accent-700)',
       mark: ()=>this.markWord(wod),
     });
-    const anchorItems = ['ear','jpn','strength'].map(id=>{
+    const anchorItems = state.instruments.filter(a=>a.anchor).map(a=>a.id).map(id=>{
       const it = mkItem(id, this.isChecked(id) ? 'Done today' : 'Daily anchor');
       return Object.assign(it, {hasWord: id==='jpn' && PROPS.showQuote, word: id==='jpn' ? word : null, isExtra:false});
     });
-    const usedToday = rotation.ids.concat(['ear','jpn','strength']);
+    const usedToday = rotation.ids.concat(state.instruments.filter(a=>a.anchor).map(a=>a.id));
     const addableToday = ACTIVITIES.filter(a=>usedToday.indexOf(a.id)<0 && a.id!=='other').map(a=>({
       name:a.name, add: ()=>this.addInstrumentToday(a.id),
       border:'var(--color-divider)', color: a.stroke,
@@ -1407,14 +1447,40 @@ class Store {
       sprint: !!proj.sprint,
       sprintLabel: proj.sprint ? 'In sprint — on every day' : 'Sprint mode off',
       toggleSprint: ()=>this.patchProject(proj.id, {sprint: !proj.sprint}),
-      openSteps: proj.steps.filter(s=>this.stepStatusOf(s)!=='done').slice(0,3).map(s=>this.stepView(s)),
+      openSteps: proj.steps.filter(s=>this.stepStatusOf(s)!=='done').slice(0,3).map(st=>{
+        const v = this.stepView(st);
+        if(!st.repeat) return Object.assign(v, {repeat:false});
+        const count = this.stepDailyCount(st.id);
+        const target = Number(st.target)||0;
+        return Object.assign(v, {
+          repeat: true,
+          doneToday: this.isStepDoneToday(st.id),
+          toggleToday: ()=>this.toggleStepDay(st.id),
+          repeatLabel: target ? count+'/'+target
+            : st.until ? 'to '+labelFor(st.until) : String(count),
+        });
+      }),
       // Editing the push without leaving Today: the steps are the work, and
       // they change while you are doing them.
       editing: !!state.todayProjectEdit,
       toggleEdit: ()=>this.setState({todayProjectEdit: !state.todayProjectEdit}),
       allSteps: proj.steps.map(st=>{
         const v = this.stepView(st);
+        const count = this.stepDailyCount(st.id);
+        const target = Number(st.target)||0;
         return {label: st.label, tickLabel: v.tickLabel, tickTitle: v.tickTitle,
+          repeat: !!st.repeat, target: target ? String(target) : '', until: st.until||'',
+          doneToday: this.isStepDoneToday(st.id),
+          dailyCount: count,
+          repeatLabel: st.repeat
+            ? (target ? count+' of '+target+' days'
+               : st.until ? 'until '+labelFor(st.until)
+               : count+(count===1?' day':' days'))
+            : '',
+          toggleToday: ()=>this.toggleStepDay(st.id),
+          toggleRepeat: ()=>this.setStepRepeat(proj.id, st.id, {repeat: !st.repeat}),
+          setTarget: e=>this.setStepRepeat(proj.id, st.id, {target: Number(e.target.value)||0}),
+          setUntil: e=>this.setStepRepeat(proj.id, st.id, {until: e.target.value}),
           statusLabel: this.stepStatusOf(st),
           fill: v.fill, stroke: v.stroke, dash: v.dash, color: v.color,
           cycle: v.cycle,
@@ -2232,7 +2298,13 @@ class Store {
         setJp: e=>this.patchInstrument(a.id, {jp:e.target.value}),
         setJpR: e=>this.patchInstrument(a.id, {jpR:e.target.value}),
         kindLabel: a.anchor ? 'Daily anchor' : (a.rotate ? 'In the rotation' : 'Off the rotation'),
-        canRotate: !a.anchor, canDelete: this.canDeleteInstrument(a),
+        canRotate: true, canDelete: this.canDeleteInstrument(a),
+        anchor: !!a.anchor,
+        anchorLabel: a.anchor ? 'Daily anchor' : 'Not an anchor',
+        anchorBorder: a.anchor ? 'var(--color-accent)' : 'var(--color-divider)',
+        anchorBg: a.anchor ? 'var(--color-accent-100)' : 'transparent',
+        anchorColor: a.anchor ? 'var(--color-accent-800)' : muted,
+        toggleAnchor: ()=>this.patchInstrument(a.id, {anchor: !a.anchor}),
         rotateLabel: a.rotate ? 'In rotation' : 'Off rotation',
         rotateBorder: a.rotate ? 'var(--color-accent)' : 'var(--color-divider)',
         rotateBg: a.rotate ? 'var(--color-accent-100)' : 'transparent',
@@ -2311,6 +2383,9 @@ class Store {
       setInstJp: e=>this.setInstForm({jp:e.target.value}),
       setInstJpR: e=>this.setInstForm({jpR:e.target.value}),
       toggleInstRotate: ()=>this.setInstForm({rotate: !insF.rotate}),
+      instFormAnchor: !!insF.anchor,
+      toggleInstAnchor: ()=>this.setInstForm({anchor: !insF.anchor}),
+      instFormAnchorLabel: insF.anchor ? 'Daily anchor' : 'Not an anchor',
       instFormRotateLabel: insF.rotate ? 'Goes in the rotation' : 'Outside the rotation',
       instFormRotateBorder: insF.rotate ? 'var(--color-accent)' : 'var(--color-divider)',
       instFormRotateBg: insF.rotate ? 'var(--color-accent-100)' : 'transparent',

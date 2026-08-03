@@ -7,23 +7,23 @@
 // carries its Japanese name so the app reads bilingually; `jp` is the written
 // form, `jpR` its romaji.
 export const ACT_DEFS = [
-  {id:'ear', name:'Ear Training', jp:'聴音', jpR:'chōon', abbr:'Ear', anchor:true},
+  {id:'ear', name:'Ear Training', jp:'聴音', jpR:'chōon', abbr:'Ear', hue:300, anchor:true},
   {id:'piano', name:'Piano', jp:'ピアノ', jpR:'piano', abbr:'Pf', hue:75, rotate:true},
   {id:'shaku', name:'Shakuhachi', jp:'尺八', jpR:'shakuhachi', abbr:'Shk', hue:150, rotate:true},
   {id:'shino', name:'Shinobue', jp:'篠笛', jpR:'shinobue', abbr:'Shn', hue:195, rotate:true},
   {id:'trumpet', name:'Trumpet', jp:'喇叭', jpR:'rappa', abbr:'Tpt', hue:28, rotate:true},
   {id:'taiko', name:'Taiko', jp:'太鼓', jpR:'taiko', abbr:'Tk', hue:345, rotate:true},
-  {id:'jpn', name:'Japanese Reading', jp:'読解', jpR:'dokkai', abbr:'JP', anchor:true},
+  {id:'jpn', name:'Japanese Reading', jp:'読解', jpR:'dokkai', abbr:'JP', hue:120, anchor:true},
   {id:'comp', name:'Composition', jp:'作曲', jpR:'sakkyoku', abbr:'Cmp', hue:258, rotate:true},
-  {id:'strength', name:'Strength', jp:'鍛錬', jpR:'tanren', abbr:'Str', anchor:true},
+  {id:'strength', name:'Strength', jp:'鍛錬', jpR:'tanren', abbr:'Str', hue:5, anchor:true},
   {id:'other', name:'Other', jp:'その他', jpR:'sonota', abbr:'Bike', hue:null},
 ];
-export const HUE_SWATCHES = [75, 150, 195, 28, 345, 258, 300, 120];
+export const HUE_SWATCHES = [5, 28, 75, 120, 150, 195, 258, 300, 345];
 
 export function colorFor(a){
+  if(a.hue != null) return {stroke:'oklch(54% 0.10 '+a.hue+')'};
   if(a.anchor) return {stroke:'#3a2f28'};
-  if(a.hue==null) return {stroke:'#7d7979'};
-  return {stroke:'oklch(54% 0.10 '+a.hue+')'};
+  return {stroke:'#7d7979'};
 }
 
 export let ACTIVITIES = [], ACT_BY_ID = {}, ROTATION_POOL = [];

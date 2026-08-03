@@ -40,11 +40,12 @@ export function render(state, store){
         h('input', {class:'input', style:'flex:1;min-width:0;font-size:12px;padding:5px 8px', placeholder:'romaji', value:a.jpR, onChange:a.setJpR}),
       ]),
       h('div', {style:'display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:7px;padding-left:19px'}, [
-        a.canRotate ? h('button', {onClick:a.toggleRotate, style:`flex:none;padding:5px 10px;border-radius:999px;border:1px solid ${a.rotateBorder};background:${a.rotateBg};color:${a.rotateColor};font-family:var(--font-body);font-size:11px;cursor:pointer;white-space:nowrap`}, a.rotateLabel) : null,
+        h('button', {onClick:a.toggleRotate, style:`flex:none;padding:5px 10px;border-radius:999px;border:1px solid ${a.rotateBorder};background:${a.rotateBg};color:${a.rotateColor};font-family:var(--font-body);font-size:11px;cursor:pointer;white-space:nowrap`}, a.rotateLabel),
+        h('button', {onClick:a.toggleAnchor, style:`flex:none;padding:5px 10px;border-radius:999px;border:1px solid ${a.anchorBorder};background:${a.anchorBg};color:${a.anchorColor};font-family:var(--font-body);font-size:11px;cursor:pointer;white-space:nowrap`}, a.anchorLabel),
         h('span', {style:'font-size:10.5px;line-height:1.4;color:color-mix(in srgb, var(--color-text) 45%, transparent)'}, a.usage),
       ]),
     ])));
-    children.push(h('div', {style:'font-size:11px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 45%, transparent);margin-top:9px'}, 'Instruments, the language, the body — anything you practise is a Way. The three daily anchors and the catch-all stay put; everything else can go. Removing one pulls it out of the rotation, its routine, and the goals that named it. Logged sessions are kept.'));
+    children.push(h('div', {style:'font-size:11px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 45%, transparent);margin-top:9px'}, 'Instruments, the language, the body — anything you practise is a Way, and they all work the same. In rotation means it takes morning slots; daily anchor means it appears every day on Today. Only the catch-all cannot be removed. Removing a Way pulls it out of the rotation, its routine, and the goals that named it — logged sessions are kept.'));
     children.push(h('button', {onClick:s.openInstForm, style:'background:none;border:none;padding:8px 0 0;font-family:var(--font-body);font-size:11.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, '＋ new way'));
     if(s.instFormOpen){
       const f = s.instForm;
@@ -60,7 +61,10 @@ export function render(state, store){
             h('span', {style:`width:16px;height:16px;border-radius:999px;background:${hw.fill};display:block`}),
           ])
         )),
-        h('button', {onClick:s.toggleInstRotate, style:`padding:7px 12px;border-radius:999px;border:1px solid ${s.instFormRotateBorder};background:${s.instFormRotateBg};color:${s.instFormRotateColor};font-family:var(--font-body);font-size:11.5px;cursor:pointer`}, s.instFormRotateLabel),
+        h('div', {style:'display:flex;gap:7px;flex-wrap:wrap'}, [
+          h('button', {onClick:s.toggleInstRotate, style:`padding:7px 12px;border-radius:999px;border:1px solid ${s.instFormRotateBorder};background:${s.instFormRotateBg};color:${s.instFormRotateColor};font-family:var(--font-body);font-size:11.5px;cursor:pointer`}, s.instFormRotateLabel),
+          h('button', {onClick:s.toggleInstAnchor, style:`padding:7px 12px;border-radius:999px;border:1px solid ${s.instFormAnchor?'var(--color-accent)':'var(--color-divider)'};background:${s.instFormAnchor?'var(--color-accent-100)':'transparent'};color:${s.instFormAnchor?'var(--color-accent-800)':'color-mix(in srgb, var(--color-text) 55%, transparent)'};font-family:var(--font-body);font-size:11.5px;cursor:pointer`}, s.instFormAnchorLabel),
+        ]),
         h('button', {class:'btn btn-primary btn-block', onClick:s.addInstrument, style:'margin-top:13px'}, 'Add this way'),
       ]));
     }
