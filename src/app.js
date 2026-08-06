@@ -13,9 +13,10 @@ import * as goals from './screens/goals.js';
 import * as study from './screens/study.js';
 import * as library from './screens/library.js';
 import * as setup from './screens/setup.js';
+import * as strength from './screens/strength.js';
 
 const SCREENS = {
-  today, log, routine, goals, study, library,
+  today, log, routine, strength, goals, study, library,
   settings: setup, // the source's tab id for the Setup screen is 'settings'
 };
 
@@ -53,6 +54,9 @@ function tabBar(nav){
     {id:'routine', label:'Routine', icon: navIconExtra([
       h('rect', {x:4, y:5, width:16, height:15, rx:2}),
       h('path', {d:'M4 10h16M8 3v4M16 3v4'}),
+    ])},
+    {id:'strength', label:'Strength', icon: navIconExtra([
+      h('path', {d:'M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11'}),
     ])},
     {id:'goals', label:'Goals', icon: navIconExtra([
       h('circle', {cx:12, cy:12, r:8}),

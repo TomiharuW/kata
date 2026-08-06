@@ -59,7 +59,7 @@ const BACKUP_FIELDS = [
   'instruments', 'goals', 'projects', 'routineSteps',
   // Migration marker — must persist, or purgeLegacySeed() would re-run on every
   // load and keep resetting progress on the seeded goals.
-  'stepDaily', 'strengthWorkout',
+  'stepDaily', 'strengthWorkout', 'strengthSets',
   'calendarId', 'calendarView',
   '_seedPurged', '_quickConverted', '_tasksLinked',
 ];
@@ -139,6 +139,8 @@ class Store {
       todayProjectEdit: false,
       stepDaily: {},
       strengthWorkout: STRENGTH_WORKOUTS[0].name,
+      strengthSets: {},
+      strengthMinutes: '',
       calendarId: '',
       calendarView: 'AGENDA',
     };
@@ -262,6 +264,7 @@ class Store {
           tasks: s.tasks||DEFAULT_TASKS, taskDone: s.taskDone||{},
           extraToday: s.extraToday||{}, jpStudied: s.jpStudied||{}, stepDaily: s.stepDaily||{},
           strengthWorkout: s.strengthWorkout || STRENGTH_WORKOUTS[0].name,
+          strengthSets: s.strengthSets||{},
           study: s.study||SEED_STUDY, sheetUrl: s.sheetUrl||'', sheetPushUrl: s.sheetPushUrl||'',
           syncAt: s.syncAt||'', pendingPush: s.pendingPush||[],
           calendarId: s.calendarId||'', calendarView: s.calendarView||'AGENDA',
@@ -330,6 +333,7 @@ class Store {
         extraToday: s.extraToday || this.state.extraToday,
         stepDaily: s.stepDaily || this.state.stepDaily,
         strengthWorkout: s.strengthWorkout || this.state.strengthWorkout,
+        strengthSets: s.strengthSets || this.state.strengthSets,
         jpStudied: s.jpStudied || this.state.jpStudied,
         study: (s.study && s.study.length) ? s.study : this.state.study,
         sheetUrl: s.sheetUrl != null ? s.sheetUrl : this.state.sheetUrl,
@@ -1322,6 +1326,58 @@ class Store {
     this.setStrengthWorkout(names[(i + (step||1) + names.length) % names.length]);
   }
 
+  /* ---- the workout itself: sets, weight, reps ----
+     Kept per date and per exercise so last time's numbers are there to beat.
+     Weight and reps are free text — bands and bodyweight are not kilos. */
+  targetSetCount(step){
+    const m = /^\s*(\d+)/.exec(String(step.mins||''));
+    return m ? Math.max(1, Math.min(10, Number(m[1]))) : 3;
+  }
+  setsFor(exId, dateKey){
+    const key = dateKey || toKey(new Date());
+    const d = this.state.strengthSets[key];
+    return (d && d[exId]) ? d[exId] : null;
+  }
+  ensureSets(step){
+    const existing = this.setsFor(step.id);
+    if(existing) return existing;
+    const n = this.targetSetCount(step);
+    return Array.from({length:n}, ()=>({w:'', r:'', done:false}));
+  }
+  writeSets(exId, rows, quiet){
+    const key = toKey(new Date());
+    const day = Object.assign({}, this.state.strengthSets[key], {[exId]: rows});
+    const strengthSets = Object.assign({}, this.state.strengthSets, {[key]: day});
+    if(quiet) this.setStateQuiet({strengthSets}); else this.setState({strengthSets});
+    this.persist({strengthSets});
+  }
+  setSetField(step, i, field, value){
+    const rows = this.ensureSets(step).slice();
+    rows[i] = Object.assign({}, rows[i], {[field]: value});
+    this.writeSets(step.id, rows, true);   // typing must not rebuild the screen
+  }
+  toggleSetDone(step, i){
+    const rows = this.ensureSets(step).slice();
+    rows[i] = Object.assign({}, rows[i], {done: !rows[i].done});
+    this.writeSets(step.id, rows, false);
+  }
+  addSetRow(step){ this.writeSets(step.id, this.ensureSets(step).concat([{w:'', r:'', done:false}]), false); }
+  removeSetRow(step){
+    const rows = this.ensureSets(step).slice();
+    if(rows.length > 1) rows.pop();
+    this.writeSets(step.id, rows, false);
+  }
+  // The most recent earlier day this exercise was worked, for the "last time" line.
+  lastTimeFor(exId){
+    const today = toKey(new Date());
+    const days = Object.keys(this.state.strengthSets).filter(k=>k < today).sort();
+    for(let i=days.length-1; i>=0; i--){
+      const rows = (this.state.strengthSets[days[i]]||{})[exId];
+      if(rows && rows.some(r=>r.done || r.w || r.r)) return {date:days[i], rows};
+    }
+    return null;
+  }
+
   // step id -> which goal/project owns it, for rendering "worked on" entries.
   stepOwnerIndex(){
     const idx = {};
@@ -1372,7 +1428,7 @@ class Store {
   selectNav(){
     const state = this.state;
     const nav = {};
-    ['today','log','routine','goals','study','library','settings'].forEach(id=>{
+    ['today','log','routine','strength','goals','study','library','settings'].forEach(id=>{
       nav[id] = {select: ()=>this.setState({tab:id}), color: state.tab===id ? 'var(--color-accent)' : MUTED};
     });
     return {
@@ -1751,6 +1807,85 @@ class Store {
       hasNoEntries: visibleSessions.length===0, visibleSessions,
       exportJson: ()=>this.exportJson(), exportCsv: ()=>this.exportCsv(),
     };
+  }
+
+  selectStrength(){
+    const state = this.state;
+    const cur = this.currentStrengthWorkout();
+    const steps = this.stepsFor('strength').filter(x=>x.phase === cur);
+    const a = actOf('strength');
+
+    const exercises = steps.map(step=>{
+      const rows = this.ensureSets(step);
+      const last = this.lastTimeFor(step.id);
+      const doneCount = rows.filter(r=>r.done).length;
+      return {
+        id: step.id, label: step.label, target: step.mins,
+        cues: (step.cues||[]).map(t=>({text:t})),
+        hasCues: (step.cues||[]).length > 0,
+        open: !!state.openCue[step.id],
+        toggleCues: ()=>{ const o=Object.assign({},state.openCue); o[step.id]=!state.openCue[step.id]; this.setState({openCue:o}); },
+        doneCount, total: rows.length,
+        complete: doneCount > 0 && doneCount === rows.length,
+        sets: rows.map((r,i)=>({
+          n: i+1, w: r.w, r: r.r, done: r.done,
+          setW: e=>this.setSetField(step, i, 'w', e.target.value),
+          setR: e=>this.setSetField(step, i, 'r', e.target.value),
+          toggle: ()=>this.toggleSetDone(step, i),
+        })),
+        addSet: ()=>this.addSetRow(step),
+        removeSet: ()=>this.removeSetRow(step),
+        lastLabel: last
+          ? labelFor(last.date) + ' — ' + last.rows.filter(r=>r.w||r.r)
+              .map(r=>(r.w||'—')+'×'+(r.r||'—')).join(', ')
+          : 'No record yet — this is the baseline.',
+      };
+    });
+
+    const doneEx = exercises.filter(e=>e.complete).length;
+    return {
+      name: a.name, jp: a.jp, stroke: a.stroke,
+      workout: cur,
+      focus: (STRENGTH_WORKOUTS.find(w=>w.name===cur)||{}).focus || '',
+      chips: STRENGTH_WORKOUTS.map(w=>({name:w.name, on:w.name===cur, select:()=>this.setStrengthWorkout(w.name)})),
+      next: ()=>this.advanceStrengthWorkout(1),
+      prev: ()=>this.advanceStrengthWorkout(-1),
+      exercises,
+      hasExercises: exercises.length > 0,
+      doneLabel: doneEx + ' of ' + exercises.length + ' done',
+      pct: exercises.length ? Math.round(doneEx/exercises.length*100) + '%' : '0%',
+      minutes: state.strengthMinutes,
+      setMinutes: e=>this.setStateQuiet({strengthMinutes: e.target.value}),
+      canFinish: doneEx > 0,
+      finishMsg: state.logMsg,
+      clearFinishMsg: ()=>this.setState({logMsg:'', logMsgOk:false}),
+      finish: ()=>this.finishWorkout(),
+    };
+  }
+
+  // Turns the ticked sets into a real session, then moves the rotation on.
+  finishWorkout(){
+    const cur = this.currentStrengthWorkout();
+    const steps = this.stepsFor('strength').filter(x=>x.phase === cur);
+    const done = steps.filter(st=>{
+      const rows = this.setsFor(st.id);
+      return rows && rows.some(r=>r.done);
+    });
+    if(!done.length){
+      this.setState({logMsg:'Tick at least one set before finishing.', logMsgOk:false});
+      return;
+    }
+    const mins = Number(this.state.strengthMinutes) || 45;
+    const session = {
+      id: 'log-'+Date.now(), date: toKey(new Date()), time: nowTime(), activity: 'strength',
+      minutes: mins, whatWorked: cur, whereStuck: '', projectId: '', goalId: '',
+      projectIds: [], goalStepIds: [], steps: done.map(x=>x.id), licks: [],
+    };
+    const sessions = [session].concat(this.state.sessions);
+    this.setState({sessions, strengthMinutes:'',
+      logMsg: 'Logged — '+cur+', '+done.length+' of '+steps.length+' exercises, '+mins+' min.', logMsgOk:true});
+    this.persist({sessions});
+    this.advanceStrengthWorkout(1);
   }
 
   selectRoutine(){

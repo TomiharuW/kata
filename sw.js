@@ -2,7 +2,7 @@
 // whenever a new file is added under src/, public/, or reference/*.css, add its path here.
 // Bump on every deploy: the old cache is deleted on activate, so a changed
 // version is what actually pushes updated files onto installed devices.
-const CACHE_VERSION = 'kata-v18';
+const CACHE_VERSION = 'kata-v19';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -17,6 +17,7 @@ const CORE_ASSETS = [
   './src/screens/today.js',
   './src/screens/log.js',
   './src/screens/routine.js',
+  './src/screens/strength.js',
   './src/screens/goals.js',
   './src/screens/study.js',
   './src/screens/library.js',
