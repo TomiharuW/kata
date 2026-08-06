@@ -79,6 +79,31 @@ function tabBar(nav){
     ])));
 }
 
+// An update is downloaded and waiting. Rather than the close-twice-and-hope
+// dance, say so and let one tap take it.
+let updateReady = null;
+
+function updateBanner(){
+  if(!updateReady) return null;
+  return h('div', {style:'position:fixed;bottom:76px;left:50%;transform:translateX(-50%);width:100%;max-width:480px;padding:0 20px;z-index:31;box-sizing:border-box'}, [
+    h('div', {style:'display:flex;align-items:center;gap:11px;padding:11px 13px;border:1px solid var(--color-accent);background:var(--color-accent-100);border-radius:var(--radius-md);box-shadow:var(--shadow-md)'}, [
+      h('svg', {width:16, height:16, viewBox:'0 0 24 24', fill:'none', stroke:'var(--color-accent-700)', 'stroke-width':1.9, 'stroke-linecap':'round', 'stroke-linejoin':'round', style:'flex:none'}, [
+        h('path', {d:'M21 12a9 9 0 1 1-3-6.7'}), h('path', {d:'M21 4v5h-5'}),
+      ]),
+      h('span', {style:'flex:1;min-width:0;font-size:12.5px;line-height:1.4;color:var(--color-accent-800)'}, 'A new version is ready.'),
+      h('button', {onClick:applyUpdate, style:'flex:none;background:none;border:1px solid var(--color-accent);color:var(--color-accent-800);border-radius:4px;padding:6px 12px;font-family:var(--font-body);font-size:12px;cursor:pointer;white-space:nowrap'}, 'Update'),
+      h('button', {onClick:()=>{ updateReady = null; renderApp(); }, 'aria-label':'Later', style:'flex:none;background:none;border:none;padding:4px;cursor:pointer;color:var(--color-accent-700);line-height:0'}, [
+        h('svg', {width:13, height:13, viewBox:'0 0 24 24', fill:'none', stroke:'currentColor', 'stroke-width':2, 'stroke-linecap':'round'}, [h('path', {d:'M6 6l12 12M18 6 6 18'})]),
+      ]),
+    ]),
+  ]);
+}
+
+function applyUpdate(){
+  if(!updateReady) return;
+  updateReady.postMessage({type:'SKIP_WAITING'});   // reload follows on controllerchange
+}
+
 function renderApp(){
   const state = store.getState();
   const nav = store.selectNav();
@@ -90,6 +115,7 @@ function renderApp(){
     header(nav),
     content,
     tabBar(nav),
+    updateBanner(),
   ]);
 
   mount(document.getElementById('app'), root);
@@ -100,7 +126,35 @@ store.subscribe(renderApp);
 renderApp();
 
 if('serviceWorker' in navigator){
+  const offer = (worker) => { updateReady = worker; renderApp(); };
+
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js').then((reg) => {
+      // Already downloaded while the app was closed.
+      if(reg.waiting && navigator.serviceWorker.controller) offer(reg.waiting);
+
+      reg.addEventListener('updatefound', () => {
+        const fresh = reg.installing;
+        if(!fresh) return;
+        fresh.addEventListener('statechange', () => {
+          // A controller already exists, so this is an update rather than
+          // the very first install — worth telling the user about.
+          if(fresh.state === 'installed' && navigator.serviceWorker.controller) offer(fresh);
+        });
+      });
+
+      // Check again whenever the app comes back to the foreground, so a
+      // long-lived PWA session still notices a new build.
+      document.addEventListener('visibilitychange', () => {
+        if(document.visibilityState === 'visible') reg.update().catch(() => {});
+      });
+    }).catch(() => {});
+  });
+
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if(reloading) return;
+    reloading = true;
+    location.reload();
   });
 }

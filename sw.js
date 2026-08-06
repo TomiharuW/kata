@@ -2,7 +2,7 @@
 // whenever a new file is added under src/, public/, or reference/*.css, add its path here.
 // Bump on every deploy: the old cache is deleted on activate, so a changed
 // version is what actually pushes updated files onto installed devices.
-const CACHE_VERSION = 'kata-v19';
+const CACHE_VERSION = 'kata-v20';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -28,12 +28,17 @@ const CORE_ASSETS = [
   './public/icons/maskable-512.png',
 ];
 
+// Deliberately no skipWaiting() here. A new worker installs and then waits,
+// so the running app can offer the update rather than swapping files under
+// someone mid-session. app.js sends SKIP_WAITING when the user taps Update.
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_VERSION)
-      .then((cache) => cache.addAll(CORE_ASSETS))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_VERSION).then((cache) => cache.addAll(CORE_ASSETS))
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
