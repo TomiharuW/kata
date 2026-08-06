@@ -14,7 +14,7 @@ import {
   ACT_BY_ID, ACTIVITIES, ROTATION_POOL,
   TIME_CHUNKS, QUOTES, Q_BY_ID, SEKKI, NOTABLE,
   STUDY_STATUS, STUDY_PRIORITY, STUDY_CATEGORY, STUDY_COLS, SEED_STUDY,
-  SHAKU_PHASES, SHAKU_ROUTINE, seedRoutineSteps, LICK_SOURCES, seedLicks,
+  SHAKU_PHASES, SHAKU_ROUTINE, phasesFor, seedRoutineSteps, LICK_SOURCES, seedLicks,
   DEFAULT_TASKS, GOALS, SEED_GOALS, applyGoals,
   PROJECTS, SEED_PROJECTS, applyProjects, SEED_DONE_DATES,
   DAYS, DEFAULT_ROTATION, DEFAULT_BLOCKS, DEFAULT_STRENGTH_DAYS, DEFAULT_LESSONS, DEFAULT_PINS,
@@ -1608,7 +1608,7 @@ class Store {
     const cuesDefaultOpen = !!PROPS.routineOpenCues;
     const formSteps = state.form.steps||[];
     const formLicks = state.form.licks||[];
-    const shakuPhases = SHAKU_PHASES.filter(ph=>actSteps.some(s=>s.phase===ph)).map(ph=>({
+    const shakuPhases = phasesFor(act).filter(ph=>actSteps.some(s=>s.phase===ph)).map(ph=>({
       phase: ph,
       steps: actSteps.filter(s=>s.phase===ph).map(s=>{
         const on = formSteps.indexOf(s.id)>=0;
@@ -2203,7 +2203,7 @@ class Store {
     const libSteps = this.stepsFor(state.libraryAct);
     inst.showRoutine = libSteps.length>0;
     const lickFormForLib = state.lickForm;
-    inst.routine = SHAKU_PHASES.filter(ph=>libSteps.some(s=>s.phase===ph)).map(ph=>({
+    inst.routine = phasesFor(state.libraryAct).filter(ph=>libSteps.some(s=>s.phase===ph)).map(ph=>({
       phase: ph,
       steps: libSteps.filter(s=>s.phase===ph).map(s=>{
         const open = !!state.openCue['lib-'+s.id];
@@ -2329,7 +2329,7 @@ class Store {
         color: on ? c.stroke : muted};
     });
     const setupOwnSteps = this.stepsFor(state.setupInst);
-    const setupSteps = SHAKU_PHASES.filter(ph=>setupOwnSteps.some(s=>s.phase===ph)).map(ph=>({
+    const setupSteps = phasesFor(state.setupInst).filter(ph=>setupOwnSteps.some(s=>s.phase===ph)).map(ph=>({
       phase: ph,
       steps: setupOwnSteps.filter(s=>s.phase===ph).map(s=>({
         label:s.label, meta:s.mins+' min · '+((s.cues||[]).length)+' cues',
@@ -2392,7 +2392,7 @@ class Store {
       instFormRotateColor: insF.rotate ? 'var(--color-accent-800)' : muted,
       addInstrument: ()=>this.addInstrument(),
       stepForm: stF, stepFormOpen: stF.open,
-      phaseOptions: SHAKU_PHASES,
+      phaseOptions: phasesFor(state.setupInst),
       openStepForm: ()=>this.setStepForm({open:!stF.open}),
       setStepPhase: e=>this.setStepForm({phase:e.target.value}),
       setStepLabel: e=>this.setStepForm({label:e.target.value}),

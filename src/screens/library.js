@@ -189,11 +189,11 @@ export function render(state, store){
     }
   }
 
-  // Shakuhachi routine + licks (shaku only)
-  if(inst.showShaku){
+  // The routine belongs to any Way that has one; licks are shakuhachi's alone.
+  if(inst.showRoutine){
     children.push(sectionHeader('The practice routine', inst.secRoutine.count, inst.secRoutine));
     if(inst.secRoutine.open){
-      children.push(h('div', {style:'font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 52%, transparent);margin-bottom:6px'}, 'Warm up, technical, then reward. The rate is how often each step got ticked in the last ten shakuhachi sessions.'));
+      children.push(h('div', {style:'font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 52%, transparent);margin-bottom:6px'}, 'The run of steps you tick while logging this Way. The rate is how often each got ticked in the last ten sessions.'));
       children.push(...inst.routine.map(ph => h('div', {style:'margin-top:12px'}, [
         h('div', {style:'font-family:var(--font-heading);font-size:11.5px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 62%, transparent);padding-bottom:5px;border-bottom:1px solid var(--color-divider)'}, ph.phase),
         ...ph.steps.map(s => h('div', {style:'border-bottom:1px solid var(--color-divider)'}, [
@@ -214,6 +214,9 @@ export function render(state, store){
       ])));
     }
 
+  }
+
+  if(inst.showShaku){
     children.push(sectionHeader('Licks & phrases', inst.secLicks.count, inst.secLicks));
     if(inst.secLicks.open){
       if(inst.noLicks){

@@ -789,7 +789,7 @@
 
     <sc-if value="{{ isLibrary }}" hint-placeholder-val="{{ false }}">
       <h1 style="font-size:26px;margin:10px 0 6px">Library</h1>
-      <div style="font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:16px">Everything filed under one way: the hours it has taken, the goals riding on it, and what you have actually finished.</div>
+      <div style="font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:16px">Everything filed under one instrument: the hours it has taken, the goals riding on it, and what you have actually finished.</div>
 
       <div class="field" style="margin-bottom:16px">
         <input class="input" type="search" placeholder="Search 稽古, kanji, a goal, a note…" value="{{ libQuery }}" onChange="{{ setLibQuery }}">
@@ -840,11 +840,7 @@
         </sc-for>
       </div>
 
-      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 3px">
-        <h2 style="font-size:23px;margin:0;color:{{ inst.stroke }}">{{ inst.name }}</h2>
-        <span style="font-family:var(--font-heading);font-size:20px;line-height:1;color:{{ inst.stroke }};opacity:0.75">{{ inst.jp }}</span>
-        <span style="font-size:11px;color:color-mix(in srgb, var(--color-text) 45%, transparent)">{{ inst.jpR }}</span>
-      </div>
+      <h2 style="font-size:23px;margin:0 0 3px;color:{{ inst.stroke }}">{{ inst.name }}</h2>
       <div style="font-size:11.5px;color:color-mix(in srgb, var(--color-text) 52%, transparent);margin-bottom:14px">{{ inst.kindLabel }} · {{ inst.lastLabel }}</div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--color-divider);border:1px solid var(--color-divider);margin-bottom:18px">
@@ -1104,11 +1100,11 @@
 
     <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
       <h1 style="font-size:26px;margin:10px 0 6px">Setup</h1>
-      <div style="font-size:12.5px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 55%, transparent)">The ways you practise, the routines hanging off them, and the goals they feed. Anything changed here changes everywhere — the rotation, the log, the library.</div>
+      <div style="font-size:12.5px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Instruments, the routines hanging off them, and the goals they feed. Anything changed here changes everywhere — the rotation, the log, the library.</div>
 
       <button onClick="{{ secInstruments.toggle }}" style="display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;padding:0;margin:22px 0 9px;cursor:pointer;font-family:var(--font-body)">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex:none;transform:{{ secInstruments.chevron }}"><path d="m6 9 6 6 6-6"></path></svg>
-        <span style="font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Ways 道 — what you practise</span>
+        <span style="font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Instruments</span>
         <span style="margin-left:auto;font-size:11px;font-variant-numeric:tabular-nums;color:color-mix(in srgb, var(--color-text) 42%, transparent)">{{ secInstruments.count }}</span>
       </button>
       <sc-if value="{{ secInstruments.open }}" hint-placeholder-val="{{ true }}">
@@ -1118,29 +1114,22 @@
               <span style="width:9px;height:9px;border-radius:999px;border:2px solid {{ a.stroke }};flex:none"></span>
               <input class="input" style="flex:1;min-width:0;font-size:13.5px;padding:7px 9px" value="{{ a.name }}" onChange="{{ a.rename }}">
               <sc-if value="{{ a.canDelete }}" hint-placeholder-val="{{ true }}">
-                <button onClick="{{ a.remove }}" class="btn btn-icon btn-ghost" aria-label="Remove this way" style="flex:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m2 0-1 13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7"></path></svg></button>
+                <button onClick="{{ a.remove }}" class="btn btn-icon btn-ghost" aria-label="Remove instrument" style="flex:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m2 0-1 13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7"></path></svg></button>
               </sc-if>
             </div>
-            <div style="display:flex;gap:8px;margin-top:7px;padding-left:19px">
-              <input class="input" style="flex:none;width:96px;font-family:var(--font-heading);font-size:15px;padding:5px 8px" placeholder="日本語" value="{{ a.jp }}" onChange="{{ a.setJp }}">
-              <input class="input" style="flex:1;min-width:0;font-size:12px;padding:5px 8px" placeholder="romaji" value="{{ a.jpR }}" onChange="{{ a.setJpR }}">
-            </div>
             <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:7px;padding-left:19px">
-              <button onClick="{{ a.toggleRotate }}" style="flex:none;padding:5px 10px;border-radius:999px;border:1px solid {{ a.rotateBorder }};background:{{ a.rotateBg }};color:{{ a.rotateColor }};font-family:var(--font-body);font-size:11px;cursor:pointer;white-space:nowrap">{{ a.rotateLabel }}</button>
-              <button onClick="{{ a.toggleAnchor }}" style="flex:none;padding:5px 10px;border-radius:999px;border:1px solid {{ a.anchorBorder }};background:{{ a.anchorBg }};color:{{ a.anchorColor }};font-family:var(--font-body);font-size:11px;cursor:pointer;white-space:nowrap">{{ a.anchorLabel }}</button>
+              <sc-if value="{{ a.canRotate }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ a.toggleRotate }}" style="flex:none;padding:5px 10px;border-radius:999px;border:1px solid {{ a.rotateBorder }};background:{{ a.rotateBg }};color:{{ a.rotateColor }};font-family:var(--font-body);font-size:11px;cursor:pointer;white-space:nowrap">{{ a.rotateLabel }}</button>
+              </sc-if>
               <span style="font-size:10.5px;line-height:1.4;color:color-mix(in srgb, var(--color-text) 45%, transparent)">{{ a.usage }}</span>
             </div>
           </div>
         </sc-for>
-        <div style="font-size:11px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 45%, transparent);margin-top:9px">Instruments, the language, the body — anything you practise is a Way, and they all work the same. In rotation means it takes morning slots; daily anchor means it appears every day on Today. Only the catch-all cannot be removed. Removing a Way pulls it out of the rotation, its routine, and the goals that named it — logged sessions are kept.</div>
-        <button onClick="{{ openInstForm }}" style="background:none;border:none;padding:8px 0 0;font-family:var(--font-body);font-size:11.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px">＋ new way</button>
+        <div style="font-size:11px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 45%, transparent);margin-top:9px">The three daily anchors and the catch-all stay put — everything else can go. Removing an instrument pulls it out of the rotation, its routine, and the goals that named it. Logged sessions are kept.</div>
+        <button onClick="{{ openInstForm }}" style="background:none;border:none;padding:8px 0 0;font-family:var(--font-body);font-size:11.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px">＋ new instrument</button>
         <sc-if value="{{ instFormOpen }}" hint-placeholder-val="{{ false }}">
           <div style="margin-top:9px;padding:13px;border:1px solid var(--color-divider);border-radius:var(--radius-sm)">
-            <div class="field" style="margin-bottom:9px"><label>Name</label><input class="input" placeholder="e.g. Koto" value="{{ instForm.name }}" onChange="{{ setInstName }}"></div>
-            <div style="display:flex;gap:9px;margin-bottom:11px">
-              <div class="field" style="flex:none;width:110px"><label>Japanese</label><input class="input" style="font-family:var(--font-heading);font-size:15px" placeholder="箏" value="{{ instForm.jp }}" onChange="{{ setInstJp }}"></div>
-              <div class="field" style="flex:1;min-width:0"><label>Romaji</label><input class="input" placeholder="koto" value="{{ instForm.jpR }}" onChange="{{ setInstJpR }}"></div>
-            </div>
+            <div class="field" style="margin-bottom:11px"><label>Name</label><input class="input" placeholder="e.g. Koto" value="{{ instForm.name }}" onChange="{{ setInstName }}"></div>
             <div style="font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:7px">Colour</div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
               <sc-for list="{{ hueSwatches }}" as="h" hint-placeholder-count="8">
@@ -1149,11 +1138,8 @@
                 </button>
               </sc-for>
             </div>
-            <div style="display:flex;gap:7px;flex-wrap:wrap">
-              <button onClick="{{ toggleInstRotate }}" style="padding:7px 12px;border-radius:999px;border:1px solid {{ instFormRotateBorder }};background:{{ instFormRotateBg }};color:{{ instFormRotateColor }};font-family:var(--font-body);font-size:11.5px;cursor:pointer">{{ instFormRotateLabel }}</button>
-              <button onClick="{{ toggleInstAnchor }}" style="padding:7px 12px;border-radius:999px;border:1px solid {{ instFormAnchorBorder }};background:{{ instFormAnchorBg }};color:{{ instFormAnchorColor }};font-family:var(--font-body);font-size:11.5px;cursor:pointer">{{ instFormAnchorLabel }}</button>
-            </div>
-            <button class="btn btn-primary btn-block" onClick="{{ addInstrument }}" style="margin-top:13px">Add this way</button>
+            <button onClick="{{ toggleInstRotate }}" style="padding:7px 12px;border-radius:999px;border:1px solid {{ instFormRotateBorder }};background:{{ instFormRotateBg }};color:{{ instFormRotateColor }};font-family:var(--font-body);font-size:11.5px;cursor:pointer">{{ instFormRotateLabel }}</button>
+            <button class="btn btn-primary btn-block" onClick="{{ addInstrument }}" style="margin-top:13px">Add instrument</button>
           </div>
         </sc-if>
       </sc-if>
@@ -1311,27 +1297,23 @@
 
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:480,&quot;height&quot;:900},&quot;startTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;today&quot;,&quot;log&quot;,&quot;routine&quot;,&quot;goals&quot;,&quot;study&quot;,&quot;library&quot;,&quot;settings&quot;],&quot;default&quot;:&quot;today&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Behaviour&quot;},&quot;showQuote&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behaviour&quot;},&quot;routineInLog&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Routines&quot;},&quot;routineOpenCues&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Routines&quot;},&quot;peekScope&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;today&quot;,&quot;all&quot;],&quot;default&quot;:&quot;today&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Goal check sheet&quot;},&quot;peekHideDone&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Goal check sheet&quot;},&quot;studySheetUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://docs.google.com/spreadsheets/d/1k0XG6jdzVZ1Fq1lPo-YR8TGBmyiovZhMailEoSUUxxo/edit?gid=1158544230#gid=1158544230&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;To Study&quot;},&quot;studyFormUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://forms.gle/JKjyZFsuhfox46Y26&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;To Study&quot;}}">
-// The Ways (道) — everything practised, not just the instruments. Each carries
-// its Japanese name (`jp`) and romaji (`jpR`) so the app reads bilingually.
-// `anchor` now means only "appears every day on Today"; it no longer decides
-// colour, rotation or deletability, so every Way behaves the same in Setup.
 const ACT_DEFS = [
-  {id:'ear', name:'Ear Training', jp:'聴音', jpR:'chōon', abbr:'Ear', hue:300, anchor:true},
-  {id:'piano', name:'Piano', jp:'ピアノ', jpR:'piano', abbr:'Pf', hue:75, rotate:true},
-  {id:'shaku', name:'Shakuhachi', jp:'尺八', jpR:'shakuhachi', abbr:'Shk', hue:150, rotate:true},
-  {id:'shino', name:'Shinobue', jp:'篠笛', jpR:'shinobue', abbr:'Shn', hue:195, rotate:true},
-  {id:'trumpet', name:'Trumpet', jp:'喇叭', jpR:'rappa', abbr:'Tpt', hue:28, rotate:true},
-  {id:'taiko', name:'Taiko', jp:'太鼓', jpR:'taiko', abbr:'Tk', hue:345, rotate:true},
-  {id:'jpn', name:'Japanese Reading', jp:'読解', jpR:'dokkai', abbr:'JP', hue:120, anchor:true},
-  {id:'comp', name:'Composition', jp:'作曲', jpR:'sakkyoku', abbr:'Cmp', hue:258, rotate:true},
-  {id:'strength', name:'Strength', jp:'鍛錬', jpR:'tanren', abbr:'Str', hue:5, anchor:true},
-  {id:'other', name:'Other', jp:'その他', jpR:'sonota', abbr:'Bike', hue:null},
+  {id:'ear', name:'Ear Training', abbr:'Ear', anchor:true},
+  {id:'piano', name:'Piano', abbr:'Pf', hue:75, rotate:true},
+  {id:'shaku', name:'Shakuhachi', abbr:'Shk', hue:150, rotate:true},
+  {id:'shino', name:'Shinobue', abbr:'Shn', hue:195, rotate:true},
+  {id:'trumpet', name:'Trumpet', abbr:'Tpt', hue:28, rotate:true},
+  {id:'taiko', name:'Taiko', abbr:'Tk', hue:345, rotate:true},
+  {id:'jpn', name:'Japanese Reading', abbr:'JP', anchor:true},
+  {id:'comp', name:'Composition', abbr:'Cmp', hue:258, rotate:true},
+  {id:'strength', name:'Strength', abbr:'Str', anchor:true},
+  {id:'other', name:'Other', abbr:'Bike', hue:null},
 ];
-const HUE_SWATCHES = [5, 28, 75, 120, 150, 195, 258, 300, 345];
+const HUE_SWATCHES = [75, 150, 195, 28, 345, 258, 300, 120];
 function colorFor(a){
-  if(a.hue != null) return {stroke:'oklch(54% 0.10 '+a.hue+')'};
   if(a.anchor) return {stroke:'#3a2f28'};
-  return {stroke:'#7d7979'};
+  if(a.hue==null) return {stroke:'#7d7979'};
+  return {stroke:'oklch(54% 0.10 '+a.hue+')'};
 }
 let ACTIVITIES = [], ACT_BY_ID = {}, ROTATION_POOL = [];
 function applyInstruments(list){
@@ -1340,7 +1322,7 @@ function applyInstruments(list){
   ROTATION_POOL = ACTIVITIES.filter(a=>a.rotate).map(a=>a.id);
 }
 applyInstruments(ACT_DEFS);
-const actOf = id => ACT_BY_ID[id] || {id, name:id||'Unfiled', jp:'', jpR:'', abbr:String(id||'—').slice(0,3), stroke:'#7d7979'};
+const actOf = id => ACT_BY_ID[id] || {id, name:id||'Unfiled', abbr:String(id||'—').slice(0,3), stroke:'#7d7979'};
 const abbrOf = id => { const a = actOf(id); return a.abbr || a.name.slice(0,3); };
 const clone = x => JSON.parse(JSON.stringify(x));
 const AREAS = ['Music','Brass band','Japanese','Health / strength','Other'];
@@ -1790,7 +1772,7 @@ class Component extends DCLogic {
     routineSteps: seedRoutineSteps(),
     setupOpen: {inst:true, routines:false, goals:false},
     setupInst: 'shaku',
-    instForm: {open:false, name:'', jp:'', jpR:'', hue:75, rotate:true, anchor:false},
+    instForm: {open:false, name:'', hue:75, rotate:true},
     stepForm: {open:false, phase:'Warm up', label:'', mins:'5', cues:''},
     goalOpen: {},
     newStep: {},
@@ -2138,12 +2120,11 @@ class Component extends DCLogic {
     const f = this.state.instForm;
     const name = (f.name||'').trim();
     if(!name) return;
-    const a = {id:'in-'+Date.now(), name, jp:(f.jp||'').trim(), jpR:(f.jpR||'').trim(),
-      abbr:name.replace(/[^A-Za-z0-9]/g,'').slice(0,3) || name.slice(0,2),
-      hue:Number(f.hue), rotate:!!f.rotate, anchor:!!f.anchor};
-    this.commitInstruments(this.state.instruments.concat([a]), {instForm:{open:false, name:'', jp:'', jpR:'', hue:f.hue, rotate:true, anchor:false}});
+    const a = {id:'in-'+Date.now(), name, abbr:name.replace(/[^A-Za-z0-9]/g,'').slice(0,3) || name.slice(0,2),
+      hue:Number(f.hue), rotate:!!f.rotate};
+    this.commitInstruments(this.state.instruments.concat([a]), {instForm:{open:false, name:'', hue:f.hue, rotate:true}});
   }
-  canDeleteInstrument(a){ return a.id!=='other'; }
+  canDeleteInstrument(a){ return !a.anchor && a.id!=='other'; }
   removeInstrument(id){
     const a = this.state.instruments.find(x=>x.id===id);
     if(!a || !this.canDeleteInstrument(a)) return;
@@ -2603,11 +2584,11 @@ class Component extends DCLogic {
       markColor: studied ? 'var(--color-accent-800)' : 'var(--color-accent-700)',
       mark: ()=>this.markWord(wod),
     });
-    const anchorItems = state.instruments.filter(a=>a.anchor).map(a=>a.id).map(id=>{
+    const anchorItems = ['ear','jpn','strength'].map(id=>{
       const it = mkItem(id, this.isChecked(id) ? 'Done today' : 'Daily anchor');
       return Object.assign(it, {hasWord: id==='jpn' && (this.props.showQuote ?? true), word: id==='jpn' ? word : null, isExtra:false});
     });
-    const usedToday = rotation.ids.concat(state.instruments.filter(a=>a.anchor).map(a=>a.id));
+    const usedToday = rotation.ids.concat(['ear','jpn','strength']);
     const addableToday = ACTIVITIES.filter(a=>usedToday.indexOf(a.id)<0 && a.id!=='other').map(a=>({
       name:a.name, add: ()=>this.addInstrumentToday(a.id),
       border:'var(--color-divider)', color: a.stroke,
@@ -3138,22 +3119,15 @@ class Component extends DCLogic {
     };
     const setupInstruments = state.instruments.map(a=>{
       const c = colorFor(a);
-      return {name:a.name, jp:a.jp||'', jpR:a.jpR||'', stroke:c.stroke, usage:usageOf(a.id),
+      return {name:a.name, stroke:c.stroke, usage:usageOf(a.id),
         kindLabel: a.anchor ? 'Daily anchor' : (a.rotate ? 'In the rotation' : 'Off the rotation'),
-        canDelete: this.canDeleteInstrument(a),
+        canRotate: !a.anchor, canDelete: this.canDeleteInstrument(a),
         rotateLabel: a.rotate ? 'In rotation' : 'Off rotation',
         rotateBorder: a.rotate ? 'var(--color-accent)' : 'var(--color-divider)',
         rotateBg: a.rotate ? 'var(--color-accent-100)' : 'transparent',
         rotateColor: a.rotate ? 'var(--color-accent-800)' : muted,
-        anchorLabel: a.anchor ? 'Daily anchor' : 'Not an anchor',
-        anchorBorder: a.anchor ? 'var(--color-accent)' : 'var(--color-divider)',
-        anchorBg: a.anchor ? 'var(--color-accent-100)' : 'transparent',
-        anchorColor: a.anchor ? 'var(--color-accent-800)' : muted,
         rename: e=>this.patchInstrument(a.id, {name:e.target.value}),
-        setJp: e=>this.patchInstrument(a.id, {jp:e.target.value}),
-        setJpR: e=>this.patchInstrument(a.id, {jpR:e.target.value}),
         toggleRotate: ()=>this.patchInstrument(a.id, {rotate: !a.rotate}),
-        toggleAnchor: ()=>this.patchInstrument(a.id, {anchor: !a.anchor}),
         remove: ()=>this.removeInstrument(a.id)};
     });
     const insF = state.instForm;
@@ -3266,13 +3240,6 @@ class Component extends DCLogic {
       instForm: insF, instFormOpen: insF.open,
       openInstForm: ()=>this.setInstForm({open:!insF.open}),
       setInstName: e=>this.setInstForm({name:e.target.value}),
-      setInstJp: e=>this.setInstForm({jp:e.target.value}),
-      setInstJpR: e=>this.setInstForm({jpR:e.target.value}),
-      toggleInstAnchor: ()=>this.setInstForm({anchor: !insF.anchor}),
-      instFormAnchorLabel: insF.anchor ? 'Daily anchor' : 'Not an anchor',
-      instFormAnchorBorder: insF.anchor ? 'var(--color-accent)' : 'var(--color-divider)',
-      instFormAnchorBg: insF.anchor ? 'var(--color-accent-100)' : 'transparent',
-      instFormAnchorColor: insF.anchor ? 'var(--color-accent-800)' : muted,
       toggleInstRotate: ()=>this.setInstForm({rotate: !insF.rotate}),
       instFormRotateLabel: insF.rotate ? 'Goes in the rotation' : 'Outside the rotation',
       instFormRotateBorder: insF.rotate ? 'var(--color-accent)' : 'var(--color-divider)',

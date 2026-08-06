@@ -230,6 +230,11 @@ export const SEED_STUDY = [
 ];
 
 export const SHAKU_PHASES = ['Warm up','Technical','Repertoire'];
+// Phases are per-Way — "Repertoire" means nothing in a gym, "Accessory"
+// nothing on a flute. Anything without its own set uses the default.
+export const STRENGTH_PHASES = ['Warm up','Main lifts','Accessory'];
+export const PHASES_BY_WAY = {shaku: SHAKU_PHASES, strength: STRENGTH_PHASES};
+export const phasesFor = instId => PHASES_BY_WAY[instId] || SHAKU_PHASES;
 export const SHAKU_ROUTINE = [
   {id:'sr1', phase:'Warm up', label:'呂吹 — ro-buki', mins:'5–8', cues:[
     'Pressure and metallic tone — lean into it, don’t clean it up.',
@@ -256,7 +261,50 @@ export const SHAKU_ROUTINE = [
     'City pop counts — Stay With Me, Friday Chinatown.',
     'Always the last 15–20 minutes. The brain has to keep associating the instrument with fun.']},
 ];
-export function seedRoutineSteps(){ return clone(SHAKU_ROUTINE).map(s=>Object.assign({inst:'shaku'}, s)); }
+// Strength 鍛錬 — three a week, built so it never costs you a performance.
+// Nothing here should leave the hands, wrists or embouchure worse than it
+// found them; the heavy work is legs and hinge, the arms get volume not load.
+export const STRENGTH_ROUTINE = [
+  {id:'st1', phase:'Warm up', label:'Breathing ladder', mins:'4', cues:[
+    'Low and slow — the same support you want on shakuhachi.',
+    'In four, out eight. Ribs wide, shoulders quiet.',
+    'This is the warm-up that carries into the horn, not a formality.']},
+  {id:'st2', phase:'Warm up', label:'Shoulders and wrists', mins:'4', cues:[
+    'Wrist circles both ways, then open-palm stretches — you play after this.',
+    'Band pull-aparts, light, until the shoulders feel awake.',
+    'If anything pinches, stop. A tweak here costs a week of playing.']},
+  {id:'st3', phase:'Warm up', label:'Hips and ankles', mins:'3', cues:[
+    'Deep squat hold, elbows inside the knees.',
+    'Ankle rocks — you sit to play, these seize up.']},
+  {id:'st4', phase:'Main lifts', label:'Goblet squat — 3 × 8', mins:'8', cues:[
+    'Chest tall, weight through mid-foot.',
+    'Breathe at the top, not at the bottom.',
+    'Leave two in the tank. This is not a max day.']},
+  {id:'st5', phase:'Main lifts', label:'Push-up, clean form — 3 × 8', mins:'6', cues:[
+    'Straight line ear to heel; ribs down.',
+    'Elbows at 45°, not flared — protects the shoulder you need.',
+    'Quality over count. Stop the set when the line breaks.']},
+  {id:'st6', phase:'Main lifts', label:'Single-arm row — 3 × 10 each', mins:'8', cues:[
+    'Pull to the hip, not the armpit.',
+    'This is the antidote to hours curled over an instrument.']},
+  {id:'st7', phase:'Main lifts', label:'Hinge / RDL — 3 × 8', mins:'7', cues:[
+    'Hips back, not knees down. Spine long.',
+    'Light — the point is the pattern, not the load.']},
+  {id:'st8', phase:'Accessory', label:'Farmer carry — 2 lengths', mins:'4', cues:[
+    'Grip hard, walk tall, do not shrug.',
+    'Drop it before the grip goes — hands are the tools.']},
+  {id:'st9', phase:'Accessory', label:'Dead hang — 2 × 30s', mins:'3', cues:[
+    'Shoulders active, not dangling.',
+    'Decompresses everything the instruments compress.']},
+  {id:'st10', phase:'Accessory', label:'Side plank — 2 × 30s each', mins:'3', cues:[
+    'Stack the hips. Breathe through it.',
+    'The brace that holds a taiko stance and a long phrase.']},
+];
+
+export function seedRoutineSteps(){
+  return clone(SHAKU_ROUTINE).map(s=>Object.assign({inst:'shaku'}, s))
+    .concat(clone(STRENGTH_ROUTINE).map(s=>Object.assign({inst:'strength'}, s)));
+}
 export const LICK_SOURCES = ['Honkyoku','Shōmyō','Improv','City pop','By ear'];
 // The phrase library ships with its real content, but no play history —
 // `plays` fills in as you tick them off while logging a shakuhachi session.
