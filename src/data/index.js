@@ -232,9 +232,8 @@ export const SEED_STUDY = [
 export const SHAKU_PHASES = ['Warm up','Technical','Repertoire'];
 // Phases are per-Way — "Repertoire" means nothing in a gym, "Accessory"
 // nothing on a flute. Anything without its own set uses the default.
-export const STRENGTH_PHASES = ['Warm up','Main lifts','Accessory'];
-export const PHASES_BY_WAY = {shaku: SHAKU_PHASES, strength: STRENGTH_PHASES};
-export const phasesFor = instId => PHASES_BY_WAY[instId] || SHAKU_PHASES;
+// Looked up lazily — STRENGTH_PHASES is declared further down the file.
+export const phasesFor = instId => instId === 'strength' ? STRENGTH_PHASES : SHAKU_PHASES;
 export const SHAKU_ROUTINE = [
   {id:'sr1', phase:'Warm up', label:'呂吹 — ro-buki', mins:'5–8', cues:[
     'Pressure and metallic tone — lean into it, don’t clean it up.',
@@ -261,44 +260,59 @@ export const SHAKU_ROUTINE = [
     'City pop counts — Stay With Me, Friday Chinatown.',
     'Always the last 15–20 minutes. The brain has to keep associating the instrument with fun.']},
 ];
-// Strength 鍛錬 — three a week, built so it never costs you a performance.
-// Nothing here should leave the hands, wrists or embouchure worse than it
-// found them; the heavy work is legs and hinge, the arms get volume not load.
+// Strength 鍛錬 — the Built With Science push/pull/legs rotation. Each workout
+// is a `phase`, so it plugs into the existing routine machinery: ticked while
+// logging, rate tracked per exercise, shown in the Library. The Log shows only
+// the workout that is up next rather than all six at once.
+export const STRENGTH_WORKOUTS = [
+  {name:'Push 1',           focus:'Shoulders · chest · triceps'},
+  {name:'Pull 1',           focus:'Back · biceps'},
+  {name:'Legs 1 (Quads)',   focus:'Quads · calves · core'},
+  {name:'Push 2',           focus:'Chest · shoulders · triceps'},
+  {name:'Pull 2',           focus:'Back · biceps'},
+  {name:'Legs 2 (Glutes)',  focus:'Glutes · calves'},
+];
+export const STRENGTH_PHASES = STRENGTH_WORKOUTS.map(w=>w.name);
+
+const SS = 'Superset — run it straight into the next one.';
 export const STRENGTH_ROUTINE = [
-  {id:'st1', phase:'Warm up', label:'Breathing ladder', mins:'4', cues:[
-    'Low and slow — the same support you want on shakuhachi.',
-    'In four, out eight. Ribs wide, shoulders quiet.',
-    'This is the warm-up that carries into the horn, not a formality.']},
-  {id:'st2', phase:'Warm up', label:'Shoulders and wrists', mins:'4', cues:[
-    'Wrist circles both ways, then open-palm stretches — you play after this.',
-    'Band pull-aparts, light, until the shoulders feel awake.',
-    'If anything pinches, stop. A tweak here costs a week of playing.']},
-  {id:'st3', phase:'Warm up', label:'Hips and ankles', mins:'3', cues:[
-    'Deep squat hold, elbows inside the knees.',
-    'Ankle rocks — you sit to play, these seize up.']},
-  {id:'st4', phase:'Main lifts', label:'Goblet squat — 3 × 8', mins:'8', cues:[
-    'Chest tall, weight through mid-foot.',
-    'Breathe at the top, not at the bottom.',
-    'Leave two in the tank. This is not a max day.']},
-  {id:'st5', phase:'Main lifts', label:'Push-up, clean form — 3 × 8', mins:'6', cues:[
-    'Straight line ear to heel; ribs down.',
-    'Elbows at 45°, not flared — protects the shoulder you need.',
-    'Quality over count. Stop the set when the line breaks.']},
-  {id:'st6', phase:'Main lifts', label:'Single-arm row — 3 × 10 each', mins:'8', cues:[
-    'Pull to the hip, not the armpit.',
-    'This is the antidote to hours curled over an instrument.']},
-  {id:'st7', phase:'Main lifts', label:'Hinge / RDL — 3 × 8', mins:'7', cues:[
-    'Hips back, not knees down. Spine long.',
-    'Light — the point is the pattern, not the load.']},
-  {id:'st8', phase:'Accessory', label:'Farmer carry — 2 lengths', mins:'4', cues:[
-    'Grip hard, walk tall, do not shrug.',
-    'Drop it before the grip goes — hands are the tools.']},
-  {id:'st9', phase:'Accessory', label:'Dead hang — 2 × 30s', mins:'3', cues:[
-    'Shoulders active, not dangling.',
-    'Decompresses everything the instruments compress.']},
-  {id:'st10', phase:'Accessory', label:'Side plank — 2 × 30s each', mins:'3', cues:[
-    'Stack the hips. Breathe through it.',
-    'The brace that holds a taiko stance and a long phrase.']},
+  // ---- Push 1
+  {id:'sw-p1-1', phase:'Push 1', label:'Barbell Bench Press', mins:'3 × 8–12', cues:[]},
+  {id:'sw-p1-2', phase:'Push 1', label:'Pike Pushup', mins:'3 × 10–20', cues:[]},
+  {id:'sw-p1-3', phase:'Push 1', label:'Standing Mid-Chest Cable Fly', mins:'3 × 10–15', cues:[]},
+  {id:'sw-p1-4', phase:'Push 1', label:'Cable Lateral Raise', mins:'4 × 10–20', cues:['Per side.']},
+  {id:'sw-p1-5', phase:'Push 1', label:'Single Arm Overhead Rope Extensions', mins:'3 × 10–15', cues:[]},
+  {id:'sw-p1-6', phase:'Push 1', label:'Standing Face Pulls', mins:'3 × 10–15', cues:[]},
+  // ---- Pull 1
+  {id:'sw-l1-1', phase:'Pull 1', label:'Kneeling Lat Pulldowns', mins:'3 × 10–15', cues:[]},
+  {id:'sw-l1-2', phase:'Pull 1', label:'Lat Focused Cable Row', mins:'3 × 10–15', cues:[]},
+  {id:'sw-l1-3', phase:'Pull 1', label:'Rear Delt Cable Fly', mins:'3 × 10–15', cues:[]},
+  {id:'sw-l1-4', phase:'Pull 1', label:'Behind Body Cable Curls', mins:'3 × 8–12', cues:[]},
+  {id:'sw-l1-5', phase:'Pull 1', label:'Rope Cable Curls', mins:'3 × 10–15', cues:['Neutral grip.']},
+  // ---- Legs 1
+  {id:'sw-g1-1', phase:'Legs 1 (Quads)', label:'Bodyweight Bulgarian Split Squat', mins:'3 × 10–20', cues:['Per side.']},
+  {id:'sw-g1-2', phase:'Legs 1 (Quads)', label:'Banded Split Squat (Quad Focused)', mins:'3 × 10–20', cues:['Per side.']},
+  {id:'sw-g1-3', phase:'Legs 1 (Quads)', label:'Banded Hamstring Curls', mins:'3 × 10–20', cues:[]},
+  {id:'sw-g1-4', phase:'Legs 1 (Quads)', label:'Bodyweight Sissy Squat', mins:'3 × 10–20', cues:[]},
+  {id:'sw-g1-5', phase:'Legs 1 (Quads)', label:'Single Leg Weighted Calf Raise', mins:'3 × 8–12', cues:['Per side.', SS]},
+  {id:'sw-g1-6', phase:'Legs 1 (Quads)', label:'Dead Bug', mins:'3 × 5–10', cues:[SS]},
+  // ---- Push 2
+  {id:'sw-p2-1', phase:'Push 2', label:'Flat Machine Chest Press', mins:'3 × 8–12', cues:[]},
+  {id:'sw-p2-2', phase:'Push 2', label:'Incline Machine Chest Press', mins:'3 × 8–12', cues:[]},
+  {id:'sw-p2-3', phase:'Push 2', label:'Banded Lateral Raises', mins:'3 × 10–20', cues:[]},
+  {id:'sw-p2-4', phase:'Push 2', label:'Rope Overhead Tricep Extensions', mins:'3 × 10–15', cues:[]},
+  {id:'sw-p2-5', phase:'Push 2', label:'Push-Ups', mins:'3 × 10–20', cues:['Bands optional.']},
+  // ---- Pull 2
+  {id:'sw-l2-1', phase:'Pull 2', label:'Kneeling One Arm Lat Pulldown', mins:'3 × 10–15', cues:['Per side.']},
+  {id:'sw-l2-2', phase:'Pull 2', label:'Chest Supported Machine Row', mins:'3 × 8–12', cues:[]},
+  {id:'sw-l2-3', phase:'Pull 2', label:'Banded Bicep Curls', mins:'3 × 10–20', cues:[]},
+  {id:'sw-l2-4', phase:'Pull 2', label:'(Weighted) Prone Arm Circles', mins:'2 × 5–10', cues:[]},
+  // ---- Legs 2
+  {id:'sw-g2-1', phase:'Legs 2 (Glutes)', label:'Banded Deadlift', mins:'3 × 10–20', cues:[]},
+  {id:'sw-g2-2', phase:'Legs 2 (Glutes)', label:'Bodyweight Bulgarian Split Squats (Glute Focused)', mins:'3 × 10–20', cues:['Per side.']},
+  {id:'sw-g2-3', phase:'Legs 2 (Glutes)', label:'Hip Thrust Machine', mins:'3 × 10–15', cues:[]},
+  {id:'sw-g2-4', phase:'Legs 2 (Glutes)', label:'Banded Hip Abductions', mins:'3 × 10–20', cues:[SS]},
+  {id:'sw-g2-5', phase:'Legs 2 (Glutes)', label:'Bodyweight Single Leg Calf Raises', mins:'3 × 10–20', cues:['Per side.', SS]},
 ];
 
 export function seedRoutineSteps(){

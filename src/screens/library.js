@@ -274,6 +274,8 @@ export function render(state, store){
     children.push(...inst.history.map(w => h('div', {style:'display:flex;align-items:flex-start;gap:11px;padding:10px 0;border-bottom:1px solid var(--color-divider)'}, [
       w.kind === 'done'
         ? h('svg', {width:14, height:14, viewBox:'0 0 16 16', style:'flex:none;margin-top:3px'}, [h('circle', {cx:8, cy:8, r:6, fill:'var(--color-accent)', stroke:'var(--color-accent)', 'stroke-width':1.4})])
+        : w.kind === 'tick'
+        ? h('svg', {width:14, height:14, viewBox:'0 0 32 32', style:'flex:none;margin-top:3px'}, [h('circle', {cx:16, cy:16, r:12, fill:'none', stroke:'var(--color-accent)', 'stroke-width':3, 'stroke-linecap':'round', transform:'rotate(-90 16 16)'})])
         : h('svg', {width:13, height:13, viewBox:'0 0 24 24', fill:'none', stroke:'var(--color-accent)', 'stroke-width':3.2, 'stroke-linecap':'round', 'stroke-linejoin':'round', style:'flex:none;margin-top:3px'}, [h('path', {d:'m5 13 4 4L19 7'})]),
       h('div', {style:'flex:1;min-width:0'}, [
         h('div', {style:'font-size:13px;line-height:1.45'}, w.label),

@@ -36,7 +36,23 @@ function shakuStepRow(s){
 }
 
 function routinePanel(l){
-  const kids = [
+  const kids = [];
+  if(l.isStrength){
+    kids.push(h('div', {style:'display:flex;align-items:center;gap:9px;margin-bottom:9px'}, [
+      h('button', {onClick:l.prevStrengthWorkout, 'aria-label':'Previous workout', style:'flex:none;background:none;border:1px solid var(--color-divider);border-radius:4px;padding:4px 8px;cursor:pointer;color:var(--color-accent-700);font-family:var(--font-body);font-size:12px'}, '‹'),
+      h('div', {style:'flex:1;min-width:0;text-align:center'}, [
+        h('div', {style:'font-family:var(--font-heading);font-weight:600;font-size:15px;line-height:1.2'}, l.strengthWorkout),
+        h('div', {style:'font-size:10.5px;color:color-mix(in srgb, var(--color-text) 50%, transparent);margin-top:2px'}, l.strengthFocus),
+      ]),
+      h('button', {onClick:l.nextStrengthWorkout, 'aria-label':'Next workout', style:'flex:none;background:none;border:1px solid var(--color-divider);border-radius:4px;padding:4px 8px;cursor:pointer;color:var(--color-accent-700);font-family:var(--font-body);font-size:12px'}, '›'),
+    ]));
+    kids.push(h('div', {style:'display:flex;gap:5px;flex-wrap:wrap;margin-bottom:11px'}, l.strengthChips.map(c =>
+      h('button', {onClick:c.select, title:c.focus, style:`padding:4px 9px;border-radius:999px;border:1px solid ${c.on?'var(--color-accent)':'var(--color-divider)'};background:${c.on?'var(--color-accent-100)':'transparent'};color:${c.on?'var(--color-accent-800)':'color-mix(in srgb, var(--color-text) 50%, transparent)'};font-family:var(--font-body);font-size:10.5px;cursor:pointer;white-space:nowrap`}, c.name)
+    )));
+    kids.push(h('div', {style:'font-size:10.5px;line-height:1.5;color:color-mix(in srgb, var(--color-text) 45%, transparent);margin-bottom:4px'},
+      'Logging this session moves the rotation on to the next workout.'));
+  }
+  kids.push(
     h('div', {style:'display:flex;align-items:baseline;gap:8px'}, [
       h('div', {style:'font-size:11px;letter-spacing:0.09em;text-transform:uppercase;white-space:nowrap;color:color-mix(in srgb, var(--color-text) 55%, transparent)'}, 'The routine'),
       h('div', {style:'margin-left:auto;font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;color:color-mix(in srgb, var(--color-text) 45%, transparent)'}, l.stepCountLabel),
@@ -45,11 +61,14 @@ function routinePanel(l){
       h('div', {style:'font-family:var(--font-heading);font-size:11.5px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 62%, transparent);padding-bottom:5px;border-bottom:1px solid var(--color-divider)'}, ph.phase),
       ...ph.steps.map(shakuStepRow),
     ])),
+  );
+  if(l.showLicks){
+  kids.push(
     h('div', {style:'display:flex;align-items:baseline;gap:8px;margin:16px 0 8px'}, [
       h('div', {style:'font-size:11px;letter-spacing:0.09em;text-transform:uppercase;white-space:nowrap;color:color-mix(in srgb, var(--color-text) 55%, transparent)'}, 'Licks played today'),
       h('button', {onClick:l.openLickForm, style:'margin-left:auto;background:none;border:none;padding:0;white-space:nowrap;font-family:var(--font-body);font-size:11.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, '＋ new lick'),
     ]),
-  ];
+  );
   if(l.noLicks){
     kids.push(h('div', {style:'font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 48%, transparent);padding-bottom:6px'}, 'Nothing filed yet. Add the phrase you just played and it lands in the shakuhachi library.'));
   }
@@ -70,6 +89,7 @@ function routinePanel(l){
       h('div', {class:'field', style:'margin-bottom:10px'}, [h('label', {}, 'How it goes'), h('textarea', {class:'input', rows:2, placeholder:'Breath, meri, where it sits', value:lf.note, onChange:l.setLickNote})]),
       h('button', {class:'btn btn-secondary btn-block', onClick:l.addLickFromLog}, 'Add and tick it'),
     ]));
+  }
   }
   return h('div', {style:'margin:4px 0 14px;padding-top:12px;border-top:1px solid var(--color-divider)'}, kids);
 }

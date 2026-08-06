@@ -14,7 +14,7 @@ import {
   ACT_BY_ID, ACTIVITIES, ROTATION_POOL,
   TIME_CHUNKS, QUOTES, Q_BY_ID, SEKKI, NOTABLE,
   STUDY_STATUS, STUDY_PRIORITY, STUDY_CATEGORY, STUDY_COLS, SEED_STUDY,
-  SHAKU_PHASES, SHAKU_ROUTINE, phasesFor, seedRoutineSteps, LICK_SOURCES, seedLicks,
+  SHAKU_PHASES, SHAKU_ROUTINE, phasesFor, STRENGTH_WORKOUTS, seedRoutineSteps, LICK_SOURCES, seedLicks,
   DEFAULT_TASKS, GOALS, SEED_GOALS, applyGoals,
   PROJECTS, SEED_PROJECTS, applyProjects, SEED_DONE_DATES,
   DAYS, DEFAULT_ROTATION, DEFAULT_BLOCKS, DEFAULT_STRENGTH_DAYS, DEFAULT_LESSONS, DEFAULT_PINS,
@@ -59,7 +59,7 @@ const BACKUP_FIELDS = [
   'instruments', 'goals', 'projects', 'routineSteps',
   // Migration marker — must persist, or purgeLegacySeed() would re-run on every
   // load and keep resetting progress on the seeded goals.
-  'stepDaily',
+  'stepDaily', 'strengthWorkout',
   'calendarId', 'calendarView',
   '_seedPurged', '_quickConverted', '_tasksLinked',
 ];
@@ -137,6 +137,7 @@ class Store {
       taskMsg: '',
       todayProjectEdit: false,
       stepDaily: {},
+      strengthWorkout: STRENGTH_WORKOUTS[0].name,
       calendarId: '',
       calendarView: 'AGENDA',
     };
@@ -259,6 +260,7 @@ class Store {
           stepDates: s.stepDates||{}, userGoals: s.userGoals||[],
           tasks: s.tasks||DEFAULT_TASKS, taskDone: s.taskDone||{},
           extraToday: s.extraToday||{}, jpStudied: s.jpStudied||{}, stepDaily: s.stepDaily||{},
+          strengthWorkout: s.strengthWorkout || STRENGTH_WORKOUTS[0].name,
           study: s.study||SEED_STUDY, sheetUrl: s.sheetUrl||'', sheetPushUrl: s.sheetPushUrl||'',
           syncAt: s.syncAt||'', pendingPush: s.pendingPush||[],
           calendarId: s.calendarId||'', calendarView: s.calendarView||'AGENDA',
@@ -326,6 +328,7 @@ class Store {
         taskDone: s.taskDone || this.state.taskDone,
         extraToday: s.extraToday || this.state.extraToday,
         stepDaily: s.stepDaily || this.state.stepDaily,
+        strengthWorkout: s.strengthWorkout || this.state.strengthWorkout,
         jpStudied: s.jpStudied || this.state.jpStudied,
         study: (s.study && s.study.length) ? s.study : this.state.study,
         sheetUrl: s.sheetUrl != null ? s.sheetUrl : this.state.sheetUrl,
@@ -562,6 +565,8 @@ class Store {
   instSessions(instId){
     return this.state.sessions.filter(s=>s.activity===instId).slice().sort((a,b)=> a.date<b.date?1:a.date>b.date?-1:0);
   }
+  // '5–8' is minutes; '3 × 8–12' is sets and reps and must not gain a suffix.
+  minsLabel(v){ const t = String(v||''); return /[×x]/.test(t) ? t : t + ' min'; }
   stepsFor(instId){ return this.state.routineSteps.filter(s=>s.inst===instId); }
   stepRateLabel(stepId, instId){
     const recent = this.instSessions(instId||'shaku').slice(0,10);
@@ -1256,6 +1261,7 @@ class Store {
       const plays = l.plays||[];
       return Object.assign({}, l, {plays: plays.indexOf(day)>=0 ? plays : plays.concat([day])});
     });
+    if(f.activity === 'strength' && (f.steps||[]).length) this.advanceStrengthWorkout(1);
     const marked = projectIds.length + goalStepIds.length;
     this.setState({sessions, licks, form: blankForm(f.activity),
       logMsg: 'Logged — '+session.minutes+' min of '+actOf(f.activity).name
@@ -1278,6 +1284,22 @@ class Store {
     });
     this._tickCache = out; this._tickCacheFor = this.state.sessions;
     return out;
+  }
+
+  // The push/pull/legs rotation: which workout is up, and moving through it.
+  strengthWorkoutNames(){ return STRENGTH_WORKOUTS.map(w=>w.name); }
+  currentStrengthWorkout(){
+    const names = this.strengthWorkoutNames();
+    return names.indexOf(this.state.strengthWorkout) >= 0 ? this.state.strengthWorkout : names[0];
+  }
+  setStrengthWorkout(name){
+    this.setState({strengthWorkout:name});
+    this.persist({strengthWorkout:name});
+  }
+  advanceStrengthWorkout(step){
+    const names = this.strengthWorkoutNames();
+    const i = names.indexOf(this.currentStrengthWorkout());
+    this.setStrengthWorkout(names[(i + (step||1) + names.length) % names.length]);
   }
 
   // step id -> which goal/project owns it, for rendering "worked on" entries.
@@ -1608,12 +1630,17 @@ class Store {
     const cuesDefaultOpen = !!PROPS.routineOpenCues;
     const formSteps = state.form.steps||[];
     const formLicks = state.form.licks||[];
-    const shakuPhases = phasesFor(act).filter(ph=>actSteps.some(s=>s.phase===ph)).map(ph=>({
+    const isStrength = act === 'strength';
+    const curWorkout = this.currentStrengthWorkout();
+    const visiblePhases = isStrength
+      ? phasesFor(act).filter(ph=>ph === curWorkout)
+      : phasesFor(act);
+    const shakuPhases = visiblePhases.filter(ph=>actSteps.some(s=>s.phase===ph)).map(ph=>({
       phase: ph,
       steps: actSteps.filter(s=>s.phase===ph).map(s=>{
         const on = formSteps.indexOf(s.id)>=0;
         const open = state.openCue[s.id]===undefined ? cuesDefaultOpen : !!state.openCue[s.id];
-        return {label:s.label, mins:s.mins+' min', cues:s.cues.map(t=>({text:t})), open,
+        return {label:s.label, mins:this.minsLabel(s.mins), cues:s.cues.map(t=>({text:t})), open,
           chevron: open ? 'rotate(180deg)' : 'rotate(0deg)',
           toggle: ()=>this.toggleFormStep(s.id),
           toggleCue: ()=>{ const o=Object.assign({},state.openCue); o[s.id]=!open; this.setState({openCue:o}); },
@@ -1686,6 +1713,16 @@ class Store {
       logMsg: state.logMsg, logMsgOk: state.logMsgOk,
       clearLogMsg: ()=>this.setState({logMsg:'', logMsgOk:false}),
       activityOptions: this.activityOptions(),
+      isStrength,
+      showLicks: act === 'shaku',
+      strengthWorkout: curWorkout,
+      strengthFocus: (STRENGTH_WORKOUTS.find(w=>w.name===curWorkout)||{}).focus || '',
+      strengthChips: STRENGTH_WORKOUTS.map(w=>({
+        name: w.name, focus: w.focus, on: w.name===curWorkout,
+        select: ()=>this.setStrengthWorkout(w.name),
+      })),
+      nextStrengthWorkout: ()=>this.advanceStrengthWorkout(1),
+      prevStrengthWorkout: ()=>this.advanceStrengthWorkout(-1),
       linkProjects, linkGoals, linkHint,
       projectPicks, stepPickGroups, workedCount,
       workedLabel: workedCount ? workedCount+' marked' : 'nothing marked yet',
@@ -2149,6 +2186,13 @@ class Store {
           if(o) out.push({label: o.label, parent: o.parent, date: when, sortKey: sess.date+(sess.time||'')});
         });
       });
+      // Ensō ticks: "I did this today" with no session behind it. They are a
+      // real completion, so they belong in the history as a plain line.
+      Object.keys(state.checklist||{}).forEach(k=>{
+        if(!state.checklist[k][state.libraryAct]) return;
+        if(mine.some(x=>x.date===k)) return;  // a logged session already covers it
+        out.push({label: la.name, parent: 'Marked done', date: labelFor(k), sortKey: k, tick: true});
+      });
       out.sort((a,b)=> a.sortKey<b.sortKey?1:a.sortKey>b.sortKey?-1:0);
       return out.slice(0, 60);
     })();
@@ -2207,7 +2251,7 @@ class Store {
       phase: ph,
       steps: libSteps.filter(s=>s.phase===ph).map(s=>{
         const open = !!state.openCue['lib-'+s.id];
-        return {label:s.label, mins:s.mins+' min', cues:(s.cues||[]).map(t=>({text:t})), open, rate:this.stepRateLabel(s.id, state.libraryAct),
+        return {label:s.label, mins:this.minsLabel(s.mins), cues:(s.cues||[]).map(t=>({text:t})), open, rate:this.stepRateLabel(s.id, state.libraryAct),
           chevron: open ? 'rotate(180deg)' : 'rotate(0deg)',
           toggle: ()=>{ const o=Object.assign({},state.openCue); o['lib-'+s.id]=!open; this.setState({openCue:o}); }};
       })
@@ -2219,7 +2263,7 @@ class Store {
     inst.secStuck = mkSec('stuck', inst.stuckNotes.length);
     // One history: what was worked on and what was finished, newest first.
     // These were two sections of identical shape reading as one story.
-    inst.history = inst.workedLog.map(w=>Object.assign({}, w, {kind:'worked'}))
+    inst.history = inst.workedLog.map(w=>Object.assign({}, w, {kind: w.tick ? 'tick' : 'worked'}))
       .concat(inst.accomplishments.map(a=>Object.assign({}, a, {kind:'done'})))
       .sort((a,b)=> a.sortKey<b.sortKey?1:a.sortKey>b.sortKey?-1:0)
       .slice(0, 80);
