@@ -1,0 +1,46 @@
+# Deploys the site straight to GitHub Pages.
+#
+# Replaces the legacy "Deploy from a branch" pipeline, which runs a Jekyll
+# build we do not need — the repo is already a finished static site — and which
+# started timing out at the deploy step (ten minutes, no error, on a 1.1 MB
+# site) while the build itself kept succeeding.
+#
+# Requires Settings → Pages → Source to be set to "GitHub Actions".
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:      # lets a failed deploy be re-run by hand
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deploy finish rather than cancelling it midway.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
