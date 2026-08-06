@@ -93,6 +93,18 @@ export function render(state, store){
       ])),
     ])));
     children.push(h('button', {onClick:s.openStepForm, style:'background:none;border:none;padding:8px 0 0;font-family:var(--font-body);font-size:11.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, '＋ new step'));
+    children.push(h('div', {style:'display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:6px'}, [
+      h('button', {onClick:s.restoreDefaultRoutines, style:'background:none;border:none;padding:0;font-family:var(--font-body);font-size:11.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, 'Load the built-in routines'),
+      h('span', {style:'font-size:10.5px;line-height:1.4;color:color-mix(in srgb, var(--color-text) 45%, transparent)'}, 'Adds anything missing. Nothing you have written is changed.'),
+    ]));
+    if(s.routineMsg){
+      children.push(h('div', {style:'display:flex;align-items:flex-start;gap:8px;margin-top:9px;padding:10px 12px;border-left:2px solid var(--color-accent);background:var(--color-accent-100);font-size:12px;line-height:1.5;color:var(--color-accent-800)'}, [
+        h('span', {style:'flex:1;min-width:0'}, s.routineMsg),
+        h('button', {onClick:s.clearRoutineMsg, class:'btn btn-icon btn-ghost', 'aria-label':'Dismiss', style:'flex:none;width:22px;height:22px'}, [
+          h('svg', {width:12, height:12, viewBox:'0 0 24 24', fill:'none', stroke:'currentColor', 'stroke-width':2, 'stroke-linecap':'round'}, [h('path', {d:'M6 6l12 12M18 6 6 18'})]),
+        ]),
+      ]));
+    }
     if(s.stepFormOpen){
       const f = s.stepForm;
       children.push(h('div', {style:'margin-top:9px;padding:13px;border:1px solid var(--color-divider);border-radius:var(--radius-sm)'}, [

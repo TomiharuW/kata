@@ -135,6 +135,7 @@ class Store {
       backupMsg: '',
       logMsg: '', logMsgOk: false,
       taskMsg: '',
+      routineMsg: '',
       todayProjectEdit: false,
       stepDaily: {},
       strengthWorkout: STRENGTH_WORKOUTS[0].name,
@@ -663,6 +664,25 @@ class Store {
   removeRoutineStep(id){
     const routineSteps = this.state.routineSteps.filter(s=>s.id!==id);
     this.setState({routineSteps});
+    this.persist({routineSteps});
+  }
+
+  // Pull in any built-in routine steps this device is missing, without
+  // touching what is already there. Seeds normally only apply to a fresh
+  // install, which left existing devices unable to receive a new programme
+  // without wiping everything first.
+  restoreDefaultRoutines(){
+    const have = new Set(this.state.routineSteps.map(s=>s.id));
+    const missing = seedRoutineSteps().filter(s=>!have.has(s.id));
+    if(!missing.length){
+      this.setState({routineMsg:'Nothing missing — the built-in routines are already here.'});
+      return;
+    }
+    const routineSteps = this.state.routineSteps.concat(missing);
+    const byWay = {};
+    missing.forEach(s=>{ byWay[s.inst] = (byWay[s.inst]||0)+1; });
+    const summary = Object.keys(byWay).map(id=>byWay[id]+' to '+actOf(id).name).join(', ');
+    this.setState({routineSteps, routineMsg:'Added '+missing.length+' steps — '+summary+'. Nothing existing was changed.'});
     this.persist({routineSteps});
   }
 
@@ -2443,6 +2463,9 @@ class Store {
       setStepMins: e=>this.setStepForm({mins:e.target.value}),
       setStepCues: e=>this.setStepForm({cues:e.target.value}),
       addRoutineStep: ()=>this.addRoutineStep(),
+      restoreDefaultRoutines: ()=>this.restoreDefaultRoutines(),
+      routineMsg: state.routineMsg,
+      clearRoutineMsg: ()=>this.setState({routineMsg:''}),
       newGoalFromSetup: ()=>{ this.setState({tab:'goals'}); this.setGoalForm({open:true}); },
       resetArmed: state.resetArmed, resetIdle: !state.resetArmed,
       armReset: ()=>this.setState({resetArmed:true}),
