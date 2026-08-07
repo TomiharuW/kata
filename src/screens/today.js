@@ -203,6 +203,27 @@ function wordPanel(word){
   ]);
 }
 
+// The technique of the day. Weekday picks the mode, the four-week block picks
+// the parent scale — both read off the date, so there is nothing to tick here.
+function scalePanel(s){
+  return h('div', {style:'margin:16px 0 4px;padding:14px 15px;border:1px solid var(--color-divider);border-left:2px solid var(--color-accent);background:color-mix(in srgb, var(--color-accent) 4%, transparent)'}, [
+    h('div', {style:'display:flex;align-items:baseline;gap:8px;margin-bottom:11px'}, [
+      h('div', {style:'font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent-700)'}, 'Technique of the day'),
+      h('div', {style:'margin-left:auto;font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 45%, transparent);font-variant-numeric:tabular-nums'}, `${s.familyJp} · ${s.passLabel}`),
+    ]),
+    h('div', {style:'display:flex;align-items:baseline;gap:12px;flex-wrap:wrap'}, [
+      h('div', {style:'font-family:var(--font-heading);font-size:27px;line-height:1.1;font-weight:600'}, s.name),
+      h('div', {style:'font-size:12px;font-variant-numeric:tabular-nums;color:var(--color-accent-700);border:1px solid var(--color-accent);border-radius:999px;padding:2px 9px;white-space:nowrap'}, s.chord),
+    ]),
+    h('div', {style:'font-size:11.5px;letter-spacing:0.04em;color:color-mix(in srgb, var(--color-text) 50%, transparent);margin-top:4px'}, s.parent),
+    h('div', {style:'font-family:var(--font-heading);font-size:17px;font-variant-numeric:tabular-nums;letter-spacing:0.04em;margin-top:11px;padding-top:10px;border-top:1px solid var(--color-divider)'}, s.formula),
+    h('div', {style:'font-size:11.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 45%, transparent);margin-top:3px'}, s.keysLabel),
+    h('div', {style:'font-size:13px;font-style:italic;line-height:1.55;color:color-mix(in srgb, var(--color-text) 78%, transparent);margin-top:10px'}, s.fit),
+    h('div', {style:'font-size:11px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 50%, transparent);margin-top:11px;padding-top:10px;border-top:1px solid var(--color-divider)'},
+      s.familyNote + (s.onRotation ? '' : ' Neither trumpet nor piano is in today’s rotation — this one keeps turning without you.')),
+  ]);
+}
+
 function anchorRow(item){
   return h('div', {}, [
     h('div', {style:'display:flex;align-items:center;gap:13px;padding:12px 0;border-bottom:1px solid var(--color-divider)'}, [
@@ -311,6 +332,7 @@ export function render(state, store){
         )),
       ]));
     }
+    if(t.showScale) children.push(scalePanel(t.scale));
     children.push(h('button', {onClick:t.goalPeek.openIt, style:'display:flex;align-items:center;gap:9px;width:100%;margin-top:14px;padding:12px 13px;border:1px solid var(--color-accent);background:transparent;border-radius:4px;cursor:pointer;font-family:var(--font-body);text-align:left'}, [
       dotIcon(),
       h('span', {style:'flex:1;min-width:0;font-size:13px;line-height:1.4;color:var(--color-accent-800)'}, t.goalPeek.buttonLabel),

@@ -18,7 +18,7 @@ import {
   DEFAULT_TASKS, GOALS, SEED_GOALS, applyGoals,
   PROJECTS, SEED_PROJECTS, applyProjects, SEED_DONE_DATES,
   DAYS, DEFAULT_ROTATION, DEFAULT_BLOCKS, DEFAULT_STRENGTH_DAYS, DEFAULT_LESSONS, DEFAULT_PINS,
-  toKey, labelFor, mondayOf,
+  toKey, labelFor, mondayOf, scaleOfDay,
   STEP_STYLE, NEXT_STATUS,
 } from '../data/index.js';
 
@@ -28,6 +28,7 @@ import {
 const PROPS = {
   startTab: 'today',
   showQuote: true,
+  showScale: true,
   routineInLog: true,
   routineOpenCues: false,
   peekScope: 'today',
@@ -119,7 +120,10 @@ class Store {
       libOpen: {},
       goalSort: 'default',
       tick: 0,
-      routine: {variant:'current', rotation: DEFAULT_ROTATION, blocks: DEFAULT_BLOCKS, strengthDays: DEFAULT_STRENGTH_DAYS, rotationSize: 2, slotsByDay: {sat:1, sun:1}, lessons: clone(DEFAULT_LESSONS), pins: clone(DEFAULT_PINS)},
+      // Three instrument slots: Herseth's 45-on/15-off, four blocks deep —
+      // ear 15, then three 45s, which is four hours on the clock. Saturday and
+      // Sunday stay at one, the mornings the band and taiko already own.
+      routine: {variant:'current', rotation: DEFAULT_ROTATION, blocks: DEFAULT_BLOCKS, strengthDays: DEFAULT_STRENGTH_DAYS, rotationSize: 3, slotsByDay: {sat:1, sun:1}, lessons: clone(DEFAULT_LESSONS), pins: clone(DEFAULT_PINS)},
       sort: 'newest',
       filterActivity: 'all',
       stuckOpen: {},
@@ -1469,6 +1473,11 @@ class Store {
       const it = mkItem(id, this.isChecked(id) ? 'Done today' : 'Daily anchor');
       return Object.assign(it, {hasWord: id==='jpn' && PROPS.showQuote, word: id==='jpn' ? word : null, isExtra:false});
     });
+    // Which mode is up today, and out of which parent scale. Derived from the
+    // date alone — nothing to set, nothing to remember.
+    const scale = Object.assign({}, scaleOfDay(), {
+      onRotation: rotation.ids.indexOf('trumpet')>=0 || rotation.ids.indexOf('piano')>=0,
+    });
     const usedToday = rotation.ids.concat(state.instruments.filter(a=>a.anchor).map(a=>a.id));
     const addableToday = ACTIVITIES.filter(a=>usedToday.indexOf(a.id)<0 && a.id!=='other').map(a=>({
       name:a.name, add: ()=>this.addInstrumentToday(a.id),
@@ -1632,6 +1641,7 @@ class Store {
       setProjectMode: ()=>{ this.setState({mode:'project'}); this.persist({mode:'project'}); },
       projectChips, activeProject, hasProjects: state.projects.length>0, projectForm,
       rotationItems, anchorItems,
+      scale, showScale: PROPS.showScale,
       goToLog: ()=>this.setState({tab:'log'}),
       addableToday, hasAddable: addableToday.length>0,
       goalPeek,
@@ -2004,7 +2014,11 @@ class Store {
       };
     }).sort((a,b)=>a.logged-b.logged);
     const morningTotal = (()=>{
-      const t = blocks.ear + blocks.a + blocks.b + blocks.jpn + blocks.cardio;
+      // The first instrument slot takes block A, every further slot takes B.
+      // This used to be hard-coded to a+b, which undercounted any day carrying
+      // a third or fourth slot.
+      const slots = Math.max(1, state.routine.rotationSize||2);
+      const t = blocks.ear + blocks.a + blocks.b*(slots-1) + blocks.jpn + blocks.cardio;
       return Math.floor(t/60)+' h '+(t%60)+' min';
     })();
     const strengthToggles = DAYS.map(d=>{

@@ -232,6 +232,8 @@ export const SEED_STUDY = [
 export const SHAKU_PHASES = ['Warm up','Technical','Repertoire'];
 // Phases are per-Way — "Repertoire" means nothing in a gym, "Accessory"
 // nothing on a flute. Anything without its own set uses the default.
+// (Trumpet and piano use the default too: warm up → technique → repertoire is
+// exactly Malone's breakdown, so the shakuhachi phases carry them unchanged.)
 // Looked up lazily — STRENGTH_PHASES is declared further down the file.
 export const phasesFor = instId => instId === 'strength' ? STRENGTH_PHASES : SHAKU_PHASES;
 export const SHAKU_ROUTINE = [
@@ -260,6 +262,52 @@ export const SHAKU_ROUTINE = [
     'City pop counts — Stay With Me, Friday Chinatown.',
     'Always the last 15–20 minutes. The brain has to keep associating the instrument with fun.']},
 ];
+// Trumpet 喇叭 — Mike Malone's breakdown. The block is 45 minutes but the horn
+// only takes 20–25 of them: chops are a physical budget, which is exactly why
+// Malone's rule is "15–20 minutes on trumpet, then piano — same subject". The
+// rest of the block is PIANO_ROUTINE below, run on whatever was just worked
+// here. Herseth sets the clock around it: practise 45, break 15.
+export const TRUMPET_ROUTINE = [
+  {id:'tr1', phase:'Warm up', label:'Long tones', mins:'5–8', cues:[
+    'Schlossberg for all of it — Roy Poper has notes on the book.',
+    '“Gotta look cute to play cute” — corners engage, lips are free to vibrate, but the corners stay firm. (Wynton)',
+    'Nothing technical yet. Air first.']},
+  {id:'tr2', phase:'Warm up', label:'Flexibilities', mins:'4–6', cues:[
+    'Schlossberg again — slurs before anything with a tongue in it.',
+    'Slow enough that the slot is found, not hunted for.']},
+  {id:'tr3', phase:'Technical', label:'The mode of the day — twelve keys', mins:'4–6', cues:[
+    'One mode a day, all twelve keys. Today’s is on the Today screen.',
+    'Ascending melodic minor goes down the same way — jazz minor, not classical.']},
+  {id:'tr4', phase:'Technical', label:'The chords inside the scale', mins:'4–6', cues:[
+    'Take the scale and find the chords living in it, in this order:',
+    '1. Triads  2. 7th chords  3. Extensions  4. Arpeggios.',
+    'Practise an extension as if you were just placing another triad on top.',
+    'This is what turns up the sounds worth stealing — E♭maj7♭5 and its relatives.']},
+  {id:'tr5', phase:'Repertoire', label:'The tune, deeply', mins:'4–6', cues:[
+    'Know them deeply — a few tunes all the way down beats many half-known.',
+    'Whatever you played here, play it again at the piano before the block ends.']},
+];
+// Piano ピアノ — the second half of every horn block, and its own Way on the
+// days piano is in the rotation. Malone's mirroring rule: the same subject on
+// both instruments. Arpeggios on trumpet means arpeggios on piano, same keys,
+// same order. The piano is where the harmony is named; the horn is where it is
+// sung.
+export const PIANO_ROUTINE = [
+  {id:'pr1', phase:'Warm up', label:'Slow scales, hands together', mins:'5–8', cues:[
+    'Slow enough to hear the voicing, not just the fingering.']},
+  {id:'pr2', phase:'Technical', label:'The same mode — twelve keys', mins:'6–8', cues:[
+    'Whatever the horn did this morning, do here. Same mode, same twelve keys.',
+    'This is the mirror — do not let the piano wander off onto its own subject.']},
+  {id:'pr3', phase:'Technical', label:'The chords inside the scale — voiced', mins:'8–10', cues:[
+    'Triads → 7th chords → extensions → arpeggios, same ladder as the horn.',
+    'An extension is another triad placed on top. Voice it that way and it stops being theory.']},
+  {id:'pr4', phase:'Technical', label:'Where does it fit', mins:'4–5', cues:[
+    'Name the chord-scale relationship out loud before playing it.',
+    'E♭maj7♭5 for a D Dorian ♭2 — Ted Moses’ way of explaining it, which is where Malone got it.']},
+  {id:'pr5', phase:'Repertoire', label:'The same tune, at the keyboard', mins:'6–8', cues:[
+    'The tune the horn is learning, harmonised. Know them deeply.']},
+];
+
 // Strength 鍛錬 — the Built With Science push/pull/legs rotation. Each workout
 // is a `phase`, so it plugs into the existing routine machinery: ticked while
 // logging, rate tracked per exercise, shown in the Library. The Log shows only
@@ -317,6 +365,8 @@ export const STRENGTH_ROUTINE = [
 
 export function seedRoutineSteps(){
   return clone(SHAKU_ROUTINE).map(s=>Object.assign({inst:'shaku'}, s))
+    .concat(clone(TRUMPET_ROUTINE).map(s=>Object.assign({inst:'trumpet'}, s)))
+    .concat(clone(PIANO_ROUTINE).map(s=>Object.assign({inst:'piano'}, s)))
     .concat(clone(STRENGTH_ROUTINE).map(s=>Object.assign({inst:'strength'}, s)));
 }
 export const LICK_SOURCES = ['Honkyoku','Shōmyō','Improv','City pop','By ear'];
@@ -348,6 +398,11 @@ export let GOALS = [
     {id:'g1s2', label:'Transcribe four choruses by ear, no score', d:'todo'},
     {id:'g1s3', label:'One standard from memory at three tempos', d:'todo'},
     {id:'g1s4', label:'Sit in at a session and take a full chorus', d:'todo'},
+    // The technique cycle, one four-week block per step. Ticking one stamps the
+    // date, so the Library shows when each family was actually finished.
+    {id:'g1s5', label:'Major modes — all seven, twelve keys, horn and piano', d:'todo'},
+    {id:'g1s6', label:'Melodic minor modes — all seven, twelve keys, horn and piano', d:'todo'},
+    {id:'g1s7', label:'Diminished and whole tone, twelve keys', d:'todo'},
   ]},
   {id:'g2', area:'Music', name:'Idiomatic shakuhachi — honkyoku ornaments, meri/kari', activities:['shaku'], steps:[
     {id:'g2s1', label:'Meri stable across the lower octave', d:'todo'},
@@ -437,6 +492,85 @@ export function mondayOf(d){
   x.setDate(x.getDate()-off);
   return x;
 }
+/* ---- The scale of the day ----
+   Malone's technique curriculum has two axes and both fall out of the date, so
+   nothing here is stored: the weekday picks the mode (Mon the 1st, Tue the 2nd,
+   and so on), and the four-week block picks which parent scale the modes come
+   out of. Four weeks per family means every mode comes round four times before
+   the family changes. Same principle as the time-band quotation — the app tells
+   you what today is, it does not ask you to remember. */
+export const SCALE_FAMILIES = [
+  {id:'major', name:'The major modes', short:'Major', jp:'長音階',
+   note:'Seven modes, one a weekday, each of them in all twelve keys.', modes:[
+    {name:'Ionian',      parent:'1st mode of the major scale', formula:'1 2 3 4 5 6 7',        chord:'maj7',
+     fit:'The tonic. Everything after this is measured against it.'},
+    {name:'Dorian',      parent:'2nd mode of the major scale', formula:'1 2 ♭3 4 5 6 ♭7',      chord:'m7',
+     fit:'Minor carrying a ♮6 — the minor that does not sound sorry for itself.'},
+    {name:'Phrygian',    parent:'3rd mode of the major scale', formula:'1 ♭2 ♭3 4 5 ♭6 ♭7',    chord:'m7 (♭9)',
+     fit:'The ♭2 is the whole character. Land on it deliberately or not at all.'},
+    {name:'Lydian',      parent:'4th mode of the major scale', formula:'1 2 3 ♯4 5 6 7',       chord:'maj7♯11',
+     fit:'The ♯11 sits a tritone from the root and still sounds like home.'},
+    {name:'Mixolydian',  parent:'5th mode of the major scale', formula:'1 2 3 4 5 6 ♭7',       chord:'7',
+     fit:'The dominant. Most of the repertoire lives here.'},
+    {name:'Aeolian',     parent:'6th mode of the major scale', formula:'1 2 ♭3 4 5 ♭6 ♭7',     chord:'m7 (♭13)',
+     fit:'Natural minor. Compare it against Dorian in the same key — the 6th is the argument.'},
+    {name:'Locrian',     parent:'7th mode of the major scale', formula:'1 ♭2 ♭3 4 ♭5 ♭6 ♭7',   chord:'m7♭5',
+     fit:'The half-diminished sound. Where the ii of a minor ii–V comes from.'},
+  ]},
+  {id:'melmin', name:'The melodic minor modes', short:'Melodic minor', jp:'旋律的短音階',
+   note:'Ascending melodic minor — and the same way back down. Jazz minor, not the classical one.', modes:[
+    {name:'Jazz minor',       parent:'1st mode of melodic minor', formula:'1 2 ♭3 4 5 6 7',      chord:'mMaj7',
+     fit:'Ascending melodic minor, descending the same. That is the whole difference.'},
+    {name:'Dorian ♭2',        parent:'2nd mode of melodic minor', formula:'1 ♭2 ♭3 4 5 6 ♭7',    chord:'m7 (♭9)',
+     fit:'E♭maj7♭5 for a D Dorian ♭2 — Ted Moses’ way of explaining the chord-scale relationship, which is where Malone got it. Ask where it fits before you play it.'},
+    {name:'Lydian augmented', parent:'3rd mode of melodic minor', formula:'1 2 3 ♯4 ♯5 6 7',     chord:'maj7♯5',
+     fit:'Lydian with the 5th raised too. Both tensions pulling up at once.'},
+    {name:'Lydian dominant',  parent:'4th mode of melodic minor', formula:'1 2 3 ♯4 5 6 ♭7',     chord:'7♯11',
+     fit:'The dominant that does not want to resolve. Everywhere in the writing worth studying.'},
+    {name:'Mixolydian ♭6',    parent:'5th mode of melodic minor', formula:'1 2 3 4 5 ♭6 ♭7',     chord:'7♭13',
+     fit:'A dominant heading somewhere minor.'},
+    {name:'Locrian ♮2',       parent:'6th mode of melodic minor', formula:'1 2 ♭3 4 ♭5 ♭6 ♭7',   chord:'m7♭5',
+     fit:'Half-diminished with a ♮9 — the usable one over a minor ii.'},
+    {name:'Altered',          parent:'7th mode of melodic minor', formula:'1 ♭2 ♯2 3 ♯4 ♯5 ♭7',  chord:'7alt',
+     fit:'Every tension altered at once. Think melodic minor a semitone above the root.'},
+  ]},
+  {id:'dim', name:'The diminished scale', short:'Diminished', jp:'減音階',
+   note:'Only two modes, so the weekday alternates them. Twelve roots as always — though it only has three distinct shapes.', modes:[
+    {name:'Whole–half diminished', parent:'Diminished, starting with a tone', formula:'1 2 ♭3 4 ♭5 ♭6 6 7', chord:'dim7',
+     fit:'Symmetrical. Learn one shape and you have three keys for free.'},
+    {name:'Half–whole diminished', parent:'Diminished, starting with a semitone', formula:'1 ♭2 ♯2 3 ♯4 5 6 ♭7', chord:'7♭9♯11',
+     fit:'The dominant diminished. ♭9, ♯9, ♯11 and 13 all sitting in one scale.'},
+  ]},
+  {id:'whole', name:'The whole tone scale', short:'Whole tone', jp:'全音音階',
+   note:'One mode, six notes, and only two distinct scales in all twelve keys.', modes:[
+    {name:'Whole tone', parent:'Six whole steps', formula:'1 2 3 ♯4 ♯5 ♭7', chord:'7♯5',
+     fit:'No semitones, so no pull anywhere. Use it and get out.'},
+  ]},
+];
+// A Monday, and the origin the whole cycle counts from: the four weeks starting
+// here are the major modes, the four after that melodic minor, and so on. Move
+// it and every following week shifts with it.
+export const SCALE_CYCLE_START = '2026-08-10';
+export function scaleOfDay(d){
+  const now = d || new Date();
+  const origin = mondayOf(new Date(SCALE_CYCLE_START+'T00:00:00'));
+  // Round, not floor: a DST change makes the gap 7 days ± an hour, and flooring
+  // that would drop a whole week.
+  const wk = Math.round((mondayOf(now) - origin) / 604800000);
+  const mod = (n, m) => ((n % m) + m) % m;
+  const fam = SCALE_FAMILIES[mod(Math.floor(wk/4), SCALE_FAMILIES.length)];
+  const dayIdx = (now.getDay()+6)%7;          // Mon 0 … Sun 6
+  const mode = fam.modes[dayIdx % fam.modes.length];
+  const pass = mod(wk, 4) + 1;                // 1–4 — every mode four times over
+  return {
+    family: fam.name, familyShort: fam.short, familyJp: fam.jp, familyNote: fam.note,
+    name: mode.name, parent: mode.parent, formula: mode.formula, chord: mode.chord, fit: mode.fit,
+    pass, passLabel: 'Pass '+pass+' of 4',
+    wrapped: fam.modes.length < 7,
+    keysLabel: 'All twelve keys · trumpet and piano',
+  };
+}
+
 export const STEP_STYLE = {
   todo: {fill:'none', stroke:'color-mix(in srgb, var(--color-text) 32%, transparent)', dash:'3 3', color:'color-mix(in srgb, var(--color-text) 62%, transparent)'},
   progress: {fill:'none', stroke:'var(--color-accent)', dash:'none', color:'var(--color-text)'},
