@@ -319,7 +319,7 @@ export function render(state, store){
   if(t.isDefaultMode){
     children.push(h('div', {style:'display:flex;align-items:baseline;gap:8px;margin-bottom:2px'}, [
       h('div', {style:'font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)'}, 'Today’s rotation'),
-      h('div', {style:'margin-left:auto;font-size:11px;color:color-mix(in srgb, var(--color-text) 45%, transparent);font-variant-numeric:tabular-nums'}, `${t.rotationSizeLabel} slots`),
+      h('div', {style:'margin-left:auto;font-size:11px;color:color-mix(in srgb, var(--color-text) 45%, transparent);font-variant-numeric:tabular-nums'}, t.rotationSizeLabel),
     ]));
     children.push(...t.rotationItems.map(rotationRow));
     if(t.hasAddable){

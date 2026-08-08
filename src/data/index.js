@@ -15,10 +15,15 @@ export const ACT_DEFS = [
   {id:'taiko', name:'Taiko', jp:'太鼓', jpR:'taiko', abbr:'Tk', hue:345, rotate:true},
   {id:'jpn', name:'Japanese Reading', jp:'読解', jpR:'dokkai', abbr:'JP', hue:120, anchor:true},
   {id:'comp', name:'Composition', jp:'作曲', jpR:'sakkyoku', abbr:'Cmp', hue:258, rotate:true},
+  // 指揮 covers both halves of the job in one word — the baton in front of the
+  // band and the running of it. Deliberately outside the rotation: you do not
+  // schedule a slot to conduct, it happens because the band is in the room.
+  // It still logs, colours and shows in the Library like any other Way.
+  {id:'shiki', name:'Direction', jp:'指揮', jpR:'shiki', abbr:'Dir', hue:225},
   {id:'strength', name:'Strength', jp:'鍛錬', jpR:'tanren', abbr:'Str', hue:5, anchor:true},
   {id:'other', name:'Other', jp:'その他', jpR:'sonota', abbr:'Bike', hue:null},
 ];
-export const HUE_SWATCHES = [5, 28, 75, 120, 150, 195, 258, 300, 345];
+export const HUE_SWATCHES = [5, 28, 75, 120, 150, 195, 225, 258, 300, 345];
 
 export function colorFor(a){
   if(a.hue != null) return {stroke:'oklch(54% 0.10 '+a.hue+')'};
@@ -464,18 +469,29 @@ export const DEFAULT_ROTATION = {
 };
 // Lessons you take — fixed weekly appointments with a teacher, distinct from
 // the rotation because the time is not yours to move.
+// `acts` is a list: an hour rarely serves exactly one Way. Malone's lesson is
+// trumpet and piano, because that is how he teaches it. Legacy entries stored a
+// single `act` and are migrated on load.
 export const DEFAULT_LESSONS = [
-  {id:'ls-kevin',  name:'Kevin — shakuhachi', act:'shaku',   day:'thu', time:'09:30', mins:60},
-  {id:'ls-malone', name:'Mike Malone — jazz', act:'trumpet', day:'thu', time:'11:00', mins:60},
+  {id:'ls-kevin',  name:'Kevin — shakuhachi', acts:['shaku'],            day:'thu', time:'09:30', mins:60},
+  {id:'ls-malone', name:'Mike Malone — jazz', acts:['trumpet','piano'],  day:'thu', time:'11:00', mins:60},
+];
+// Bands you play in — fixed weekly rehearsals with other people. Same mechanics
+// as a lesson (the room is booked and everyone else turns up, so the time is
+// not yours to move) but a different thing: nobody is teaching you, and the
+// two hours are ensemble playing rather than practice you direct. Both are
+// "fixtures" to the rotation, which is why they share one code path below.
+export const DEFAULT_BANDS = [
+  {id:'bd-brass', name:'Brass band — I run it', acts:['shiki','trumpet'], day:'sat', time:'10:00', mins:120},
+  {id:'bd-taiko', name:'Taiko',                 acts:['taiko'],           day:'sun', time:'10:00', mins:120},
 ];
 
-// Pinned days — a Way fixed to a weekday regardless of staleness. Shakuhachi
-// and trumpet sit on Thursday because that is when the lessons are: practising
-// them anywhere else in the week wastes the correction while it is fresh.
-export const DEFAULT_PINS = [
-  {id:'pin-shaku-thu',   act:'shaku',   day:'thu'},
-  {id:'pin-trumpet-thu', act:'trumpet', day:'thu'},
-];
+// Pinned days — a Way fixed to a weekday regardless of staleness. Ships empty
+// now: shakuhachi and trumpet were pinned here to hold Thursday, but that was
+// only ever a hand-copy of where the lessons already sat. A lesson claims its
+// own slot, so the lesson is the pin. Pin something from Setup when a Way needs
+// holding to a day for a reason other than a teacher.
+export const DEFAULT_PINS = [];
 
 export const DEFAULT_BLOCKS = {ear:15, a:45, b:45, jpn:30, cardio:35, strength:25};
 export const DEFAULT_STRENGTH_DAYS = ['tue','fri'];

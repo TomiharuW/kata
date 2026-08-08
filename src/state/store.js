@@ -17,7 +17,7 @@ import {
   SHAKU_PHASES, SHAKU_ROUTINE, phasesFor, STRENGTH_WORKOUTS, seedRoutineSteps, LICK_SOURCES, seedLicks,
   DEFAULT_TASKS, GOALS, SEED_GOALS, applyGoals,
   PROJECTS, SEED_PROJECTS, applyProjects, SEED_DONE_DATES,
-  DAYS, DEFAULT_ROTATION, DEFAULT_BLOCKS, DEFAULT_STRENGTH_DAYS, DEFAULT_LESSONS, DEFAULT_PINS,
+  DAYS, DEFAULT_ROTATION, DEFAULT_BLOCKS, DEFAULT_STRENGTH_DAYS, DEFAULT_LESSONS, DEFAULT_BANDS, DEFAULT_PINS,
   toKey, labelFor, mondayOf, scaleOfDay,
   STEP_STYLE, NEXT_STATUS,
 } from '../data/index.js';
@@ -121,9 +121,12 @@ class Store {
       goalSort: 'default',
       tick: 0,
       // Three instrument slots: Herseth's 45-on/15-off, four blocks deep —
-      // ear 15, then three 45s, which is four hours on the clock. Saturday and
-      // Sunday stay at one, the mornings the band and taiko already own.
-      routine: {variant:'current', rotation: DEFAULT_ROTATION, blocks: DEFAULT_BLOCKS, strengthDays: DEFAULT_STRENGTH_DAYS, rotationSize: 3, slotsByDay: {sat:1, sun:1}, lessons: clone(DEFAULT_LESSONS), pins: clone(DEFAULT_PINS)},
+      // ear 15, then three 45s, which is four hours on the clock. Saturday keeps
+      // a one-slot override because the band takes that morning whole; Sunday is
+      // back on the default now that taiko claims its slot as a fixture rather
+      // than by squeezing the day. Every day's count is editable in Rotation
+      // settings — that is where the week's load actually gets tuned.
+      routine: {variant:'current', rotation: DEFAULT_ROTATION, blocks: DEFAULT_BLOCKS, strengthDays: DEFAULT_STRENGTH_DAYS, rotationSize: 3, slotsByDay: {sat:1}, lessons: clone(DEFAULT_LESSONS), bands: clone(DEFAULT_BANDS), pins: clone(DEFAULT_PINS)},
       sort: 'newest',
       filterActivity: 'all',
       stuckOpen: {},
@@ -273,7 +276,7 @@ class Store {
           syncAt: s.syncAt||'', pendingPush: s.pendingPush||[],
           calendarId: s.calendarId||'', calendarView: s.calendarView||'AGENDA',
           licks: (s.licks && s.licks.length) ? s.licks : seedLicks(),
-          routine: Object.assign({}, this.state.routine, s.routine||{}),
+          routine: this.migrateRoutine(Object.assign({}, this.state.routine, s.routine||{})),
         });
       } else {
         // First run: start empty. Goals, repeating tasks, routine steps and the
@@ -918,7 +921,57 @@ class Store {
     this.setState({routine}); this.persist({routine});
   }
 
+  // Fixtures used to carry a single `act`. Normalise stored ones to the `acts`
+  // list on load so nothing downstream has to keep asking which shape it has.
+  // Idempotent: an already-migrated routine passes through untouched.
+  migrateRoutine(routine){
+    const fix = list => (list||[]).map(f=>{
+      if(Array.isArray(f.acts)) return f;
+      const out = Object.assign({}, f, {acts: f.act ? [f.act] : []});
+      delete out.act;
+      return out;
+    });
+    return Object.assign({}, routine, {lessons: fix(routine.lessons), bands: fix(routine.bands)});
+  }
+
   lessonsOn(dayId){ return (this.state.routine.lessons||[]).filter(l=>l.day===dayId); }
+  bandsOn(dayId){ return (this.state.routine.bands||[]).filter(b=>b.day===dayId); }
+  // Fixtures: everything on the week that someone else's clock decides — a
+  // lesson with a teacher, a rehearsal with a band. They differ in what they
+  // are and how they read, but not in how the rotation treats them, so the
+  // slot-claiming logic works on this one list rather than on either array.
+  // Lessons come first: an hour of correction outranks an ensemble seat when
+  // both land on a day with only one slot to give.
+  fixturesOn(dayId){
+    return this.lessonsOn(dayId).map(l=>Object.assign({kind:'lesson'}, l))
+      .concat(this.bandsOn(dayId).map(b=>Object.assign({kind:'band'}, b)));
+  }
+  // The Ways a fixture serves. Tolerates the old single-`act` shape so a device
+  // that stored one before this change still reads correctly.
+  fixtureActsOf(f){
+    if(Array.isArray(f.acts)) return f.acts;
+    return f.act ? [f.act] : [];
+  }
+  // The Ways a fixture touches that do NOT rotate — Direction being the reason
+  // this exists. They claim no slot (you do not schedule an hour to conduct)
+  // but the fixture should still say they are part of it.
+  fixtureAlsoLabel(f){
+    const extra = this.fixtureActsOf(f).filter(a=>ROTATION_POOL.indexOf(a)<0);
+    return extra.length ? ' · '+extra.map(a=>actOf(a).name).join(' · ') : '';
+  }
+  // The Ways carrying a fixture on this day, deduped and limited to the ones
+  // that actually rotate. Two fixtures on the same instrument still claim only
+  // one slot — it is one instrument played that day, however it is split.
+  fixtureActsOn(dayId){
+    const out = [];
+    this.fixturesOn(dayId).forEach(f=>{
+      this.fixtureActsOf(f).forEach(a=>{
+        if(ROTATION_POOL.indexOf(a)>=0 && out.indexOf(a)<0) out.push(a);
+      });
+    });
+    return out;
+  }
+  fixtureMark(kind){ return kind==='band' ? '◎' : '◉'; }
   commitLessons(lessons){
     const routine = Object.assign({}, this.state.routine, {lessons});
     this.setState({routine});
@@ -926,7 +979,7 @@ class Store {
   }
   addLesson(){
     const lessons = (this.state.routine.lessons||[]).concat([
-      {id:'ls-'+Date.now(), name:'New lesson', act:(ROTATION_POOL[0]||'other'), day:'thu', time:'09:00', mins:60},
+      {id:'ls-'+Date.now(), name:'New lesson', acts:[ROTATION_POOL[0]||'other'], day:'thu', time:'09:00', mins:60},
     ]);
     this.commitLessons(lessons);
   }
@@ -935,6 +988,23 @@ class Store {
   }
   removeLesson(id){
     this.commitLessons((this.state.routine.lessons||[]).filter(l=>l.id!==id));
+  }
+  commitBands(bands){
+    const routine = Object.assign({}, this.state.routine, {bands});
+    this.setState({routine});
+    this.persist({routine});
+  }
+  addBand(){
+    const bands = (this.state.routine.bands||[]).concat([
+      {id:'bd-'+Date.now(), name:'New band', acts:[ROTATION_POOL[0]||'other'], day:'sat', time:'10:00', mins:120},
+    ]);
+    this.commitBands(bands);
+  }
+  patchBand(id, patch){
+    this.commitBands((this.state.routine.bands||[]).map(b=>b.id===id ? Object.assign({}, b, patch) : b));
+  }
+  removeBand(id){
+    this.commitBands((this.state.routine.bands||[]).filter(b=>b.id!==id));
   }
   // '09:30' -> '9:30am', for the day list
   clockLabel(t){
@@ -951,6 +1021,11 @@ class Store {
     const o = (r.slotsByDay||{})[dayId];
     return o==null ? (r.rotationSize||2) : o;
   }
+  // What the day actually carries. A fixture is happening whether or not the
+  // plan left room for it, so it raises the floor rather than being dropped.
+  effectiveSlotsFor(dayId){
+    return Math.max(this.slotsFor(dayId), this.fixtureActsOn(dayId).length);
+  }
   setRotationSize(n){
     const size = Math.max(0, Math.min(4, n));
     const routine = Object.assign({}, this.state.routine, {rotationSize:size});
@@ -960,6 +1035,14 @@ class Store {
   setDaySlots(dayId, n){
     const slotsByDay = Object.assign({}, this.state.routine.slotsByDay||{});
     slotsByDay[dayId] = Math.max(0, Math.min(4, n));
+    const routine = Object.assign({}, this.state.routine, {slotsByDay});
+    this.setState({routine});
+    this.persist({routine});
+  }
+  // Drop a day's override so it follows the default again.
+  clearDaySlots(dayId){
+    const slotsByDay = Object.assign({}, this.state.routine.slotsByDay||{});
+    delete slotsByDay[dayId];
     const routine = Object.assign({}, this.state.routine, {slotsByDay});
     this.setState({routine});
     this.persist({routine});
@@ -1090,9 +1173,12 @@ class Store {
   computeRotation(){
     const last = this.lastPracticed();
     const todayId = DAYS[(new Date().getDay()+6)%7].id;
-    const planned = (this.effectiveRotation()[todayId]||[]).map(e=>e.act);
+    const entries = this.effectiveRotation()[todayId]||[];
+    const planned = entries.map(e=>e.act);
+    const fixtures = {};
+    entries.forEach(e=>{ if(e.fixture) fixtures[e.act] = e.fixture; });
     const extras = (this.state.extraToday[toKey(new Date())]||[]).filter(a=>planned.indexOf(a)<0);
-    return {ids: planned.concat(extras), extras, last};
+    return {ids: planned.concat(extras), extras, last, fixtures};
   }
   daysAgoLabel(dateStr){
     if(!dateStr) return 'Never logged';
@@ -1132,11 +1218,21 @@ class Store {
     if(!stale.length){ DAYS.forEach(d=>{ rot[d.id] = []; }); return rot; }
     const pins = r.pins||[];
     DAYS.forEach((d,di)=>{
-      const want = this.slotsFor(d.id);
-      // Pinned Ways claim their slots first — staleness never displaces them.
+      const want = this.effectiveSlotsFor(d.id);
+      // A fixture claims its slot before anything else: an hour with a teacher
+      // or a rehearsal with a band is that instrument's playing for the day,
+      // and the time is not yours to move. Staleness and the hand-set plan
+      // fill in around it.
+      const fixtureActs = this.fixtureActsOn(d.id);
+      const fixtureBy = {};
+      this.fixturesOn(d.id).forEach(f=>{
+        this.fixtureActsOf(f).forEach(a=>{ if(!fixtureBy[a]) fixtureBy[a] = f; });
+      });
+      const base = [];
+      fixtureActs.forEach(a=>{ if(base.length<want && base.indexOf(a)<0) base.push(a); });
+      // Pinned Ways come next — staleness never displaces them.
       const pinnedActs = pins.filter(p=>p.day===d.id).map(p=>p.act)
         .filter(a=>ROTATION_POOL.indexOf(a)>=0);
-      const base = [];
       pinnedActs.forEach(a=>{ if(base.length<want && base.indexOf(a)<0) base.push(a); });
       // then whatever was set by hand, then staleness for anything still empty
       (r.rotation[d.id]||[]).forEach(a=>{ if(base.length<want && base.indexOf(a)<0) base.push(a); });
@@ -1149,13 +1245,19 @@ class Store {
         }
         base.push(pick || stale[start]);
       }
-      rot[d.id] = base.map(x=>({act:x, moved:false, pinned: pinnedActs.indexOf(x)>=0}));
+      rot[d.id] = base.map(x=>({act:x, moved:false, pinned: pinnedActs.indexOf(x)>=0,
+        fixture: fixtureBy[x] || null}));
     });
     if(r.variant === 'thu'){
-      const moved = rot.thu.map(x=>x.act);
-      rot.thu = [];
-      if(moved[0]) rot.tue.push({act:moved[0], moved:true, srcDay:'thu', srcSlot:0});
-      if(moved[1]) rot.fri.push({act:moved[1], moved:true, srcDay:'thu', srcSlot:1});
+      // A fixture does not move when the day is given to work — neither the
+      // teacher's hour nor the band's is yours to redistribute. Only the free
+      // slots go, carrying their original index so editing one still lands on
+      // Thursday.
+      const moved = [];
+      rot.thu.forEach((x,i)=>{ if(!x.fixture) moved.push({act:x.act, slot:i}); });
+      rot.thu = rot.thu.filter(x=>x.fixture);
+      if(moved[0]) rot.tue.push({act:moved[0].act, moved:true, srcDay:'thu', srcSlot:moved[0].slot});
+      if(moved[1]) rot.fri.push({act:moved[1].act, moved:true, srcDay:'thu', srcSlot:moved[1].slot});
     }
     return rot;
   }
@@ -1185,11 +1287,13 @@ class Store {
     const pins = this.state.routine.pins||[];
     const rotation = {}; let n = 0;
     DAYS.forEach(d=>{
-      const slots = this.slotsFor(d.id);
-      // Pinned Ways survive a refill; only the free slots are re-derived.
+      const slots = this.effectiveSlotsFor(d.id);
+      // Fixtures and pinned Ways survive a refill; only the free slots are
+      // re-derived. Fixtures first, for the same reason they come first above.
       const pinnedActs = pins.filter(p=>p.day===d.id).map(p=>p.act)
         .filter(a=>ROTATION_POOL.indexOf(a)>=0);
-      const row = pinnedActs.slice(0, slots);
+      const row = this.fixtureActsOn(d.id).slice(0, slots);
+      pinnedActs.forEach(a=>{ if(row.length<slots && row.indexOf(a)<0) row.push(a); });
       while(row.length < slots){
         let pick = null;
         for(let k=0;k<order.length;k++){
@@ -1456,8 +1560,15 @@ class Store {
     const rotationItems = rotation.ids.map(id=>{
       const it = mkItem(id, this.daysAgoLabel(rotation.last[id]));
       const extra = rotation.extras.indexOf(id)>=0;
+      // A fixture day says whose hour it is rather than how stale the Way is —
+      // "last practised 4 days ago" is not the useful fact when you are about
+      // to sit down with Kevin, or in front of the band.
+      const fx = (rotation.fixtures||{})[id];
       return Object.assign(it, {isExtra: extra, drop: ()=>this.dropInstrumentToday(id),
-        sub: extra ? 'Added for today only' : it.sub});
+        isFixture: !!fx, fixtureKind: fx ? fx.kind : '',
+        sub: extra ? 'Added for today only'
+           : fx ? this.fixtureMark(fx.kind)+' '+fx.name+' · '+this.clockLabel(fx.time)+' · '+fx.mins+' min'+this.fixtureAlsoLabel(fx)
+           : it.sub});
     });
     const wod = this.wordOfDay();
     const studied = state.jpStudied[todayKey];
@@ -1645,7 +1756,9 @@ class Store {
       goToLog: ()=>this.setState({tab:'log'}),
       addableToday, hasAddable: addableToday.length>0,
       goalPeek,
-      rotationSizeLabel: String(state.routine.rotationSize||2),
+      // What today actually carries, not the week's default — Saturday has its
+      // own override, and a fixture can raise the floor above either.
+      rotationSizeLabel: (n=>n+(n===1?' slot':' slots'))(this.effectiveSlotsFor(DAYS[(new Date().getDay()+6)%7].id)),
       todayTasks, hasTodayTasks: todayTasks.length>0, noTodayTasks: todayTasks.length===0,
       tasksSummary: tasksDoneCount+' of '+todayTasks.length+' done',
       taskForm: tf, taskFormOpen: tf.open, taskFormClosed: !tf.open, taskDayChips,
@@ -1903,21 +2016,55 @@ class Store {
     const muted = MUTED;
     const rot = this.effectiveRotation();
     const blocks = state.routine.blocks;
+    // Fixtures serve a list of Ways, so the editor picks them with chips rather
+    // than a dropdown. Every Way is offered, including the ones outside the
+    // rotation — a band that you also conduct is the case this exists for.
+    const fixtureChips = (f, patch) => {
+      const on = this.fixtureActsOf(f);
+      return ACTIVITIES.filter(a=>a.id!=='other').map(a=>{
+        const picked = on.indexOf(a.id)>=0;
+        return {
+          name: a.name, picked,
+          border: picked ? a.stroke : 'var(--color-divider)',
+          bg: picked ? 'color-mix(in srgb, '+a.stroke+' 10%, transparent)' : 'transparent',
+          color: picked ? a.stroke : muted,
+          // Never let the last one go — a fixture with no Way claims nothing
+          // and reads as a blank row.
+          toggle: ()=>{
+            const next = picked ? on.filter(x=>x!==a.id) : on.concat([a.id]);
+            if(next.length) patch({acts: next});
+          },
+        };
+      });
+    };
+    const fixtureActsLabel = f => this.fixtureActsOf(f).map(a=>actOf(a).name).join(' · ');
     const todayId = DAYS[(new Date().getDay()+6)%7].id;
     const todayKey = toKey(new Date());
     const weekDays = DAYS.map(d=>{
       const list = [];
       list.push({actId:'ear', label:'Ear '+blocks.ear+'m', editable:false});
+      // A fixture serving two Ways claims two slots, so it appears on two rows.
+      // Each leads with its own Way — otherwise the rows read as duplicates —
+      // and only the first carries the non-rotating extras.
+      const alsoShown = {};
       (rot[d.id]||[]).forEach((entry, i)=>{
         const a = actOf(entry.act);
+        // A fixture slot names the commitment and the hour, and cannot be
+        // cycled to another Way — the appointment is why the slot exists.
+        if(entry.fixture){
+          const f = entry.fixture;
+          const also = alsoShown[f.id] ? '' : this.fixtureAlsoLabel(f);
+          alsoShown[f.id] = true;
+          list.push({actId:entry.act, editable:false, lesson:true,
+                     label:this.fixtureMark(f.kind)+' '+a.name+' · '+f.name+' '
+                           + this.clockLabel(f.time)+' '+f.mins+'m'+also});
+          return;
+        }
         list.push({actId:entry.act,
                    label:(entry.moved?'‹ ':'')+(entry.pinned?'◆ ':'')+a.name+' '+(i===0?blocks.a:blocks.b)+'m',
                    editable:true, pinned:!!entry.pinned,
                    cycle:()=>this.cycleSlot(entry.srcDay||d.id, entry.srcSlot==null?i:entry.srcSlot, entry.act)});
       });
-      this.lessonsOn(d.id).forEach(l=>list.push({
-        actId:l.act, label:'◉ '+l.name+' '+this.clockLabel(l.time), editable:false, lesson:true,
-      }));
       list.push({actId:'jpn', label:'Japanese '+blocks.jpn+'m', editable:false});
       list.push({actId:'other', label:'Bike + immersion '+blocks.cardio+'m', editable:false});
       if((state.routine.strengthDays||[]).indexOf(d.id)>=0) list.push({actId:'strength', label:'Strength '+blocks.strength+'m', editable:false});
@@ -1940,10 +2087,10 @@ class Store {
       const dk = toKey(dd);
       const items = [];
       items.push({actId:'ear', label:'Ear', mins:blocks.ear, firm:false});
-      (rot[d.id]||[]).forEach((e,i)=>items.push({actId:e.act, label:(e.moved?'‹':'')+abbrOf(e.act)+(e.pinned?'◆':''), mins:(i===0?blocks.a:blocks.b), firm:true, pinned:!!e.pinned}));
-      this.lessonsOn(d.id).forEach(l=>items.push({
-        actId:l.act, label:abbrOf(l.act)+'◉', mins:l.mins, firm:true, lesson:true, lessonName:l.name,
-      }));
+      (rot[d.id]||[]).forEach((e,i)=>items.push(e.fixture
+        ? {actId:e.act, label:abbrOf(e.act)+this.fixtureMark(e.fixture.kind), mins:e.fixture.mins,
+           firm:true, fixture:true, fixtureName:e.fixture.name}
+        : {actId:e.act, label:(e.moved?'‹':'')+abbrOf(e.act)+(e.pinned?'◆':''), mins:(i===0?blocks.a:blocks.b), firm:true, pinned:!!e.pinned}));
       items.push({actId:'jpn', label:'JP', mins:blocks.jpn, firm:false});
       items.push({actId:'other', label:'Bike', mins:blocks.cardio, firm:false});
       if((state.routine.strengthDays||[]).indexOf(d.id)>=0) items.push({actId:'strength', label:'Str', mins:blocks.strength, firm:false});
@@ -1954,7 +2101,7 @@ class Store {
         doneLabel: doneCount ? doneCount+'/'+items.length : '',
         headBg: dk===todayKey ? 'var(--color-accent-100)' : 'transparent',
         headColor: dk===todayKey ? 'var(--color-accent-800)' : 'var(--color-text)',
-        slots: String(this.slotsFor(d.id)),
+        slots: String(this.effectiveSlotsFor(d.id)),
         inc: ()=>this.setDaySlots(d.id, this.slotsFor(d.id)+1),
         dec: ()=>this.setDaySlots(d.id, this.slotsFor(d.id)-1),
         items: items.map(b=>{
@@ -1963,7 +2110,7 @@ class Store {
           const done = this.isDoneOn(dk, b.actId);
           const detailed = !!sess;
           return {label:b.label, mins:String(b.mins), stroke:a.stroke, done,
-                  title: (b.lesson ? b.lessonName+' · ' : '') + a.name+' · '+b.mins+' min planned · ' + (detailed ? sess.minutes+' min logged' : done ? 'ticked — tap to clear' : (tappable ? 'tap to mark done' : 'later this week')),
+                  title: (b.fixture ? b.fixtureName+' · ' : '') + a.name+' · '+b.mins+' min planned · ' + (detailed ? sess.minutes+' min logged' : done ? 'ticked — tap to clear' : (tappable ? 'tap to mark done' : 'later this week')),
                   bg: done ? 'color-mix(in srgb, '+a.stroke+' 26%, transparent)'
                            : (b.firm ? 'color-mix(in srgb, '+a.stroke+' 10%, transparent)' : 'transparent'),
                   borderStyle: done ? 'solid' : (b.firm ? 'solid' : 'dashed'),
@@ -2041,17 +2188,50 @@ class Store {
       calOpen: state.libOpen.cal===undefined ? true : !!state.libOpen.cal,
       toggleCal: ()=>{ const o=Object.assign({},state.libOpen); o.cal = !(state.libOpen.cal===undefined ? true : !!state.libOpen.cal); this.setState({libOpen:o}); },
       lessons: (state.routine.lessons||[]).map(l=>({
-        name:l.name, act:l.act, day:l.day, time:l.time, mins:String(l.mins||60),
-        stroke: actOf(l.act).stroke,
+        name:l.name, day:l.day, time:l.time, mins:String(l.mins||60),
+        stroke: actOf(this.fixtureActsOf(l)[0]).stroke,
+        actChips: fixtureChips(l, patch=>this.patchLesson(l.id, patch)),
+        actsLabel: fixtureActsLabel(l),
         dayName: (DAYS.find(d=>d.id===l.day)||{}).name || l.day,
         whenLabel: 'Every '+((DAYS.find(d=>d.id===l.day)||{}).name||l.day)+' at '+this.clockLabel(l.time)+' · '+(l.mins||60)+' min',
         setName: e=>this.patchLesson(l.id, {name:e.target.value}),
-        setAct: e=>this.patchLesson(l.id, {act:e.target.value}),
         setDay: e=>this.patchLesson(l.id, {day:e.target.value}),
         setTime: e=>this.patchLesson(l.id, {time:e.target.value}),
         setMins: e=>this.patchLesson(l.id, {mins:Number(e.target.value)||60}),
         remove: ()=>this.removeLesson(l.id),
       })),
+      bands: (state.routine.bands||[]).map(b=>({
+        name:b.name, day:b.day, time:b.time, mins:String(b.mins||120),
+        stroke: actOf(this.fixtureActsOf(b)[0]).stroke,
+        actChips: fixtureChips(b, patch=>this.patchBand(b.id, patch)),
+        actsLabel: fixtureActsLabel(b),
+        dayName: (DAYS.find(d=>d.id===b.day)||{}).name || b.day,
+        whenLabel: 'Every '+((DAYS.find(d=>d.id===b.day)||{}).name||b.day)+' at '+this.clockLabel(b.time)+' · '+(b.mins||120)+' min',
+        setName: e=>this.patchBand(b.id, {name:e.target.value}),
+        setDay: e=>this.patchBand(b.id, {day:e.target.value}),
+        setTime: e=>this.patchBand(b.id, {time:e.target.value}),
+        setMins: e=>this.patchBand(b.id, {mins:Number(e.target.value)||120}),
+        remove: ()=>this.removeBand(b.id),
+      })),
+      addBand: ()=>this.addBand(),
+      // Per-day load. The default applies to any day without an override; a day
+      // carrying fixtures shows the floor they set, since that part is not
+      // yours to tune down.
+      daySlots: DAYS.map(d=>{
+        const set = (state.routine.slotsByDay||{})[d.id];
+        const own = this.slotsFor(d.id);
+        const eff = this.effectiveSlotsFor(d.id);
+        const fixed = this.fixtureActsOn(d.id).length;
+        return {
+          name: d.name, count: String(own), isDefault: set==null,
+          note: fixed ? fixed+' held by '+(fixed===1?'a fixture':'fixtures')
+                      : (set==null ? 'Following the default' : 'Set for this day'),
+          overLabel: eff>own ? '→ '+eff : '',
+          inc: ()=>this.setDaySlots(d.id, own+1),
+          dec: ()=>this.setDaySlots(d.id, own-1),
+          reset: ()=>this.clearDaySlots(d.id),
+        };
+      }),
       dayOptions: DAYS.map(d=>({value:d.id, name:d.name})),
       pins: (state.routine.pins||[]).map(pin=>({
         act:pin.act, day:pin.day,

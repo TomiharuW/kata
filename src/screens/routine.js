@@ -14,6 +14,18 @@ const checkIcon = (opacity) => h('svg', {width:8, height:8, viewBox:'0 0 24 24',
   h('path', {d:'m5 13 4 4L19 7'}),
 ]);
 
+// A fixture serves one or more Ways. Chips rather than a dropdown, because a
+// lesson is often two instruments and a band is often an instrument plus the
+// directing of it.
+function fixtureActChips(f){
+  return h('div', {style:'margin:8px 0 0 19px'}, [
+    h('div', {style:'font-size:10px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 45%, transparent);margin-bottom:5px'}, 'Ways it serves'),
+    h('div', {style:'display:flex;gap:5px;flex-wrap:wrap'}, f.actChips.map(c =>
+      h('button', {onClick:c.toggle, style:`padding:5px 9px;border-radius:999px;border:1px ${c.picked?'solid':'dashed'} ${c.border};background:${c.bg};color:${c.color};font-family:var(--font-body);font-size:11px;cursor:pointer;white-space:nowrap`}, c.name)
+    )),
+  ]);
+}
+
 function dayListRow(d){
   return h('div', {style:`padding:12px 0;border-bottom:1px solid var(--color-divider);opacity:${d.opacity}`}, [
     h('div', {style:'display:flex;align-items:baseline;gap:9px'}, [
@@ -133,14 +145,31 @@ export function render(state, store){
 
   if(r.settingsOpen){
     children.push(h('div', {class:'card', style:'margin-top:11px'}, [
-      h('div', {class:'card-kicker'}, 'Instrument slots per day'),
+      h('div', {class:'card-kicker'}, 'Instrument slots'),
       h('div', {style:'display:flex;align-items:center;gap:12px;margin:11px 0 3px'}, [
-        h('div', {style:'flex:1;font-size:13px;line-height:1.5'}, 'Default for every day. Weekend days keep their own override — change those in the week strips.'),
+        h('div', {style:'flex:1;font-size:13px;line-height:1.5'}, 'The default any day follows unless it is given its own count below.'),
         h('div', {style:'display:flex;align-items:center;gap:10px;flex:none;border:1px solid var(--color-divider);border-radius:4px;padding:6px 10px'}, [
           h('button', {onClick:r.decRotation, 'aria-label':'Fewer', style:'background:none;border:none;padding:0;cursor:pointer;color:var(--color-accent-700);font-size:17px;line-height:1;font-family:var(--font-body)'}, '−'),
           h('span', {style:'font-family:var(--font-heading);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;min-width:14px;text-align:center'}, r.rotationSize),
           h('button', {onClick:r.incRotation, 'aria-label':'More', style:'background:none;border:none;padding:0;cursor:pointer;color:var(--color-accent-700);font-size:17px;line-height:1;font-family:var(--font-body)'}, '+'),
         ]),
+      ]),
+      // Per-day load. The default above applies to any day left alone; this is
+      // where a heavy Tuesday and a light Sunday get set apart.
+      h('div', {style:'margin-top:14px;padding-top:12px;border-top:1px solid var(--color-divider)'}, [
+        h('div', {style:'font-size:10.5px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 50%, transparent);margin-bottom:4px'}, 'Load by day 曜日ごと'),
+        h('div', {style:'font-size:11.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 48%, transparent);margin-bottom:9px'}, 'Tune the week’s load day by day. A day holding a lesson or a band shows the floor those set — that part is not yours to tune down.'),
+        ...r.daySlots.map(d => h('div', {style:'display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--color-divider)'}, [
+          h('div', {style:'flex:none;width:34px;font-family:var(--font-heading);font-weight:600;font-size:13.5px'}, d.name),
+          h('div', {style:'flex:1;min-width:0;font-size:11px;line-height:1.4;color:color-mix(in srgb, var(--color-text) 48%, transparent)'}, d.note),
+          d.overLabel ? h('span', {style:'flex:none;font-size:10.5px;font-variant-numeric:tabular-nums;color:var(--color-accent-700);border:1px solid var(--color-accent);border-radius:999px;padding:1px 7px'}, d.overLabel) : null,
+          d.isDefault ? null : h('button', {onClick:d.reset, style:'flex:none;background:none;border:none;padding:0;font-family:var(--font-body);font-size:10.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, 'reset'),
+          h('div', {style:'display:flex;align-items:center;gap:9px;flex:none;border:1px solid var(--color-divider);border-radius:4px;padding:4px 9px'}, [
+            h('button', {onClick:d.dec, 'aria-label':`Fewer slots on ${d.name}`, style:'background:none;border:none;padding:0;cursor:pointer;color:var(--color-accent-700);font-size:16px;line-height:1;font-family:var(--font-body)'}, '−'),
+            h('span', {style:'font-family:var(--font-heading);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;min-width:12px;text-align:center'}, d.count),
+            h('button', {onClick:d.inc, 'aria-label':`More slots on ${d.name}`, style:'background:none;border:none;padding:0;cursor:pointer;color:var(--color-accent-700);font-size:16px;line-height:1;font-family:var(--font-body)'}, '+'),
+          ]),
+        ])),
       ]),
       h('div', {style:'margin-top:14px;padding-top:12px;border-top:1px solid var(--color-divider)'}, [
         h('div', {style:'font-size:10.5px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 50%, transparent);margin-bottom:8px'}, 'Repeating tasks'),
@@ -185,14 +214,39 @@ export function render(state, store){
       h('button', {onClick:l.remove, class:'btn btn-icon btn-ghost', 'aria-label':'Remove lesson', style:'flex:none;width:28px;height:28px'}, [trashIcon()]),
     ]),
     h('div', {style:'display:flex;gap:7px;margin-top:7px;padding-left:19px;flex-wrap:wrap'}, [
-      h('select', {class:'input', style:'flex:1;min-width:104px;font-size:12px;padding:5px 7px', value:l.act, onChange:l.setAct},
-        r.activityOptions.map(a => h('option', {value:a.id}, a.name))),
       h('select', {class:'input', style:'flex:none;width:76px;font-size:12px;padding:5px 7px', value:l.day, onChange:l.setDay},
         r.dayOptions.map(d => h('option', {value:d.value}, d.name))),
       h('input', {class:'input', type:'time', style:'flex:none;width:96px;font-size:12px;padding:5px 7px', value:l.time, onChange:l.setTime}),
       h('input', {class:'input', type:'number', min:5, step:5, style:'flex:none;width:62px;font-size:12px;padding:5px 7px', value:l.mins, onInput:l.setMins}),
     ]),
+    fixtureActChips(l),
     h('div', {style:'font-size:10.5px;line-height:1.4;color:color-mix(in srgb, var(--color-text) 45%, transparent);margin:5px 0 0 19px'}, l.whenLabel),
+  ])));
+
+  // Bands — fixed weekly rehearsals with other people. Same mechanics as a
+  // lesson: the slot is claimed, not planned. Nobody is teaching you, though,
+  // so they read differently — ◎ rather than ◉.
+  children.push(h('div', {style:'display:flex;align-items:baseline;gap:8px;margin:24px 0 8px'}, [
+    h('div', {style:'font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)'}, 'Bands 合奏'),
+    h('button', {onClick:r.addBand, style:'margin-left:auto;background:none;border:none;padding:2px 0;font-family:var(--font-body);font-size:11.5px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px'}, '＋ new band'),
+  ]));
+  if(!r.bands.length){
+    children.push(h('div', {style:'font-size:12.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 48%, transparent);margin-bottom:10px'}, 'No bands set. These are the rehearsals other people turn up to — the room is booked whether or not the week was planned around it.'));
+  }
+  children.push(...r.bands.map(b => h('div', {style:'padding:11px 0;border-bottom:1px solid var(--color-divider)'}, [
+    h('div', {style:'display:flex;align-items:center;gap:10px'}, [
+      h('span', {style:`width:9px;height:9px;border-radius:999px;border:2px solid ${b.stroke};flex:none`}),
+      h('input', {class:'input', style:'flex:1;min-width:0;font-size:13px;padding:6px 9px', value:b.name, onChange:b.setName}),
+      h('button', {onClick:b.remove, class:'btn btn-icon btn-ghost', 'aria-label':'Remove band', style:'flex:none;width:28px;height:28px'}, [trashIcon()]),
+    ]),
+    h('div', {style:'display:flex;gap:7px;margin-top:7px;padding-left:19px;flex-wrap:wrap'}, [
+      h('select', {class:'input', style:'flex:none;width:76px;font-size:12px;padding:5px 7px', value:b.day, onChange:b.setDay},
+        r.dayOptions.map(d => h('option', {value:d.value}, d.name))),
+      h('input', {class:'input', type:'time', style:'flex:none;width:96px;font-size:12px;padding:5px 7px', value:b.time, onChange:b.setTime}),
+      h('input', {class:'input', type:'number', min:5, step:5, style:'flex:none;width:62px;font-size:12px;padding:5px 7px', value:b.mins, onInput:b.setMins}),
+    ]),
+    fixtureActChips(b),
+    h('div', {style:'font-size:10.5px;line-height:1.4;color:color-mix(in srgb, var(--color-text) 45%, transparent);margin:5px 0 0 19px'}, b.whenLabel),
   ])));
 
   children.push(h('div', {style:'display:flex;align-items:baseline;gap:10px;margin:24px 0 10px'}, [
